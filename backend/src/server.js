@@ -1,17 +1,23 @@
+require('dotenv').config();
+
 const express = require('express');
+const connectDB = require('./database');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Permite recibir y procesar datos JSON.
 app.use(express.json());
 
-// Ruta inicial del servidor.
 app.get('/', (req, res) => {
   res.send('¡Bienvenido al servidor de Pizza D\' Jhon!');
 });
 
-// Inicia el servidor.
-app.listen(PORT, () => {
-  console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
-});
+async function startServer() {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
+  });
+}
+
+startServer();
