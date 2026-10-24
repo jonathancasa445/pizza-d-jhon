@@ -2,15 +2,20 @@ require('dotenv').config();
 
 const express = require('express');
 const connectDB = require('./database');
+const productRoutes = require('./routes/productRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// Ruta principal.
 app.get('/', (req, res) => {
   res.send('¡Bienvenido al servidor de Pizza D\' Jhon!');
 });
+
+// Rutas de productos.
+app.use('/api/products', productRoutes);
 
 async function startServer() {
   await connectDB();
