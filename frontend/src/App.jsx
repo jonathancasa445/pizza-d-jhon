@@ -1,55 +1,130 @@
-import './App.css'
+
+import { useEffect, useState } from 'react';
+import './App.css';
 
 function App() {
-return (
-<main className="app">
-<header className="header">
-<a href="/" className="brand">
-Pizza D' Jhon
-</a>
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-    <nav className="navigation" aria-label="Navegación principal">
-      <a href="#inicio">Inicio</a>
-      <a href="#menu">Menú</a>
-      <a href="#contacto">Contacto</a>
-    </nav>
-  </header>
+  useEffect(() => {
+    async function getProducts() {
+      try {
+        const response = await fetch(
+          'http://localhost:3000/api/products'
+        );
 
-  <section id="inicio" className="hero">
-    <div className="hero-content">
-      <p className="hero-label">Hechas para compartir</p>
+        if (!response.ok) {
+          throw new Error('No se pudieron obtener los productos.');
+        }
 
-      <h1>Bienvenido a Pizza D' Jhon</h1>
+        const data = await response.json();
+        setProducts(data);
+      } catch (error) {
+        console.error('Error al obtener productos:', error);
+        setError('No fue posible cargar el menú.');
+      } finally {
+        setLoading(false);
+      }
+    }
 
-      <p>
-        Descubre nuestras pizzas y disfruta de buenos momentos
-        con quienes más quieres.
-      </p>
+    getProducts();
+  }, []);
 
-      <a href="#menu" className="primary-button">
-        Explorar nuestro menú
-      </a>
+  return (
+    <div className="app">
+      <header className="header">
+        <a className="brand" href="#inicio">
+          Pizza D' Jhon
+        </a>
+
+        <nav className="navigation">
+          <a href="#inicio">Inicio</a>
+          <a href="#menu">Menú</a>
+          <a href="#contacto">Contacto</a>
+        </nav>
+      </header>
+
+      <main>
+        <section className="hero" id="inicio">
+          <div className="hero-content">
+            <p className="hero-label">Hecho para compartir</p>
+
+            <h1>¡Bienvenido a Pizza D' Jhon!</h1>
+
+            <p>
+              Descubre nuestras pizzas y encuentra tu favorita.
+            </p>
+
+            <a className="primary-button" href="#menu">
+              Explorar menú
+            </a>
+          </div>
+        </section>
+
+        <section className="menu-section" id="menu">
+          <h2>Nuestro menú</h2>
+
+          {loading && <p>Cargando productos...</p>}
+
+          {error && <p>{error}</p>}
+
+          {!loading && !error && products.length === 0 && (
+            <p>Actualmente no hay productos disponibles.</p>
+          )}
+
+          {!error && (
+            <div className="product-list">
+              {products.map((product) => (
+                <article
+                  className="product-card"
+                  key={product._id}
+                >
+                  {product.imageUrl && (
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                    />
+                  )}
+
+                  <h3>{product.name}</h3>
+
+                  <p>{product.description}</p>
+
+                  {product.ingredients.length > 0 && (
+                    <p>
+                      <strong>Ingredientes:</strong>{' '}
+                      {product.ingredients.join(', ')}
+                    </p>
+                  )}
+
+                  <p className="product-price">
+                    ${product.price.toFixed(2)}
+                  </p>
+
+                  <button type="button">
+                    Añadir al carrito
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="contact-section" id="contacto">
+          <h2>Contacto</h2>
+          <p>¡Estamos aquí para atenderte!</p>
+        </section>
+      </main>
+
+      <footer className="footer">
+        <p>
+          &copy; {new Date().getFullYear()} Pizza D' Jhon.
+          Todos los derechos reservados.
+        </p>
+      </footer>
     </div>
-  </section>
-
-  <section id="menu" className="menu-section">
-    <h2>Nuestro menú</h2>
-    <p>
-      Próximamente podrás descubrir nuestras pizzas y otros productos.
-    </p>
-  </section>
-
-  <section id="contacto" className="contact-section">
-    <h2>Contáctanos</h2>
-    <p>Estamos preparando nuestro espacio para atenderte.</p>
-  </section>
-
-  <footer className="footer">
-    <p>© {new Date().getFullYear()} Pizza D' Jhon</p>
-  </footer>
-</main>
-
-)
+  );
 }
 
-export default App
+export default App;
