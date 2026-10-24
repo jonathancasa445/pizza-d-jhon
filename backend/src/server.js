@@ -1,12 +1,19 @@
 require('dotenv').config();
 
 const express = require('express');
+const cors = require('cors');
+
 const connectDB = require('./database');
 const productRoutes = require('./routes/productRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(
+  cors({
+    origin: 'http://localhost:5173',
+  })
+);
 app.use(express.json());
 
 // Ruta principal.
