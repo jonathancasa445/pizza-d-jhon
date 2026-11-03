@@ -6,7 +6,16 @@ function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+  try {
+    const savedCart = localStorage.getItem('pizza-cart');
+
+    return savedCart ? JSON.parse(savedCart) : [];
+  } catch (error) {
+    console.error('Error al recuperar el carrito:', error);
+    return [];
+  }
+  });
 
   useEffect(() => {
     async function getProducts() {
@@ -31,6 +40,10 @@ function App() {
 
     getProducts();
   }, []);
+  
+  useEffect(() => {
+  localStorage.setItem('pizza-cart', JSON.stringify(cart));
+}, [cart]);
   
   function addToCart(product) {
   setCart((currentCart) => {
