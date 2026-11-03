@@ -6,6 +6,7 @@ function App() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cart, setCart] = useState([]);
 
   useEffect(() => {
     async function getProducts() {
@@ -30,6 +31,32 @@ function App() {
 
     getProducts();
   }, []);
+  
+  function addToCart(product) {
+  setCart((currentCart) => {
+    const existingProduct = currentCart.find(
+      (item) => item._id === product._id
+    );
+
+    if (existingProduct) {
+      return currentCart.map((item) =>
+        item._id === product._id
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      );
+    }
+
+    return [
+      ...currentCart,
+      { ...product, quantity: 1 },
+    ];
+  });
+}
+
+  const cartCount = cart.reduce(
+  (total, item) => total + item.quantity,
+  0
+);
 
   return (
     <div className="app">
@@ -42,6 +69,9 @@ function App() {
           <a href="#inicio">Inicio</a>
           <a href="#menu">Menú</a>
           <a href="#contacto">Contacto</a>
+          <a href="#carrito">
+            Carrito ({cartCount})
+          </a>
         </nav>
       </header>
 
@@ -102,7 +132,9 @@ function App() {
                     ${product.price.toFixed(2)}
                   </p>
 
-                  <button type="button">
+                  <button 
+                    type="button" 
+                    onClick={() => addToCart(product)}>
                     Añadir al carrito
                   </button>
                 </article>
