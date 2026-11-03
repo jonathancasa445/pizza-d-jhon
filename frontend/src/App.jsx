@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import './App.css';
 
 function App() {
+  const [currentYear] = useState(() => new Date().getFullYear());
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -197,7 +198,7 @@ function App() {
 
       <footer className="footer">
         <p>
-          &copy; {new Date().getFullYear()} Pizza D' Jhon.
+          &copy; {currentYear} Pizza D' Jhon.
           Todos los derechos reservados.
         </p>
       </footer>
