@@ -71,6 +71,11 @@ function App() {
   0
 );
 
+  const cartTotal = cart.reduce(
+  (total, item) => total + item.price * item.quantity,
+  0
+);
+
   return (
     <div className="app">
       <header className="header">
@@ -155,6 +160,34 @@ function App() {
             </div>
           )}
         </section>
+        
+        <section className="cart-section" id="carrito">
+          <h2>Tu carrito</h2>
+
+          {cart.length === 0 ? (
+             <p>Tu carrito está vacío. ¡Elige tus pizzas favoritas!</p>
+          ) : (
+              <div className="cart-list">
+                {cart.map((item) => (
+                  <article className="cart-item" key={item._id}>
+                    <div>
+                      <h3>{item.name}</h3>
+                      <p>Precio: ${item.price.toFixed(2)}</p>
+                      <p>Cantidad: {item.quantity}</p>
+                    </div>
+
+                    <p className="cart-item-total">
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </p>
+                    </article>
+                  ))}
+
+                  <div className="cart-summary">
+                    <h3>Total: ${cartTotal.toFixed(2)}</h3>
+                  </div>
+              </div>
+            )}
+          </section>
 
         <section className="contact-section" id="contacto">
           <h2>Contacto</h2>
