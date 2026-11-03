@@ -260,3 +260,48 @@ body {
     align-items: flex-start;
   }
 }
+
+/* Controles de cantidad */
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.quantity-controls button {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 6px;
+  background-color: #a52c20;
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.quantity-controls button:hover {
+  background-color: #812016;
+}
+
+.quantity-controls span {
+  min-width: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.remove-button {
+  padding: 8px 12px;
+  border: 1px solid #a52c20;
+  border-radius: 6px;
+  background-color: transparent;
+  color: #a52c20;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.remove-button:hover {
+  background-color: #a52c20;
+  color: white;
+}
