@@ -16,6 +16,9 @@ npm-debug.log*
 # Cobertura de pruebas
 coverage/
 
+# Respaldos locales de la base de datos
+backend/backups/
+
 # Archivos temporales de Windows
 Thumbs.db
 Desktop.ini

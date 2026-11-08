@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "db:inspect": "node scripts/inspect-db.js",
+    "db:backup": "node scripts/backup-products.js",
+    "db:seed": "node scripts/seed-catalog.js"
   },
   "keywords": [],
   "author": "",
