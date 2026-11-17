@@ -258,13 +258,17 @@ function serializeProduct(product) {
 
 function serializeAddon(addon) {
   const plainAddon = toPlain(addon);
+  const priceCents = Number.isInteger(plainAddon.priceCents)
+    ? plainAddon.priceCents
+    : null;
+  const available = plainAddon.available !== false;
+  const purchasable =
+    available && Number.isInteger(priceCents) && priceCents >= 0;
 
   return {
     key: plainAddon.key,
     name: plainAddon.name,
-    priceCents: Number.isInteger(plainAddon.priceCents)
-      ? plainAddon.priceCents
-      : null,
+    priceCents,
     maxQuantity: Number.isInteger(plainAddon.maxQuantity)
       ? plainAddon.maxQuantity
       : MAX_ADDON_QUANTITY_PER_ADDON,
@@ -273,7 +277,8 @@ function serializeAddon(addon) {
     appliesToKinds: Array.isArray(plainAddon.appliesToKinds)
       ? plainAddon.appliesToKinds.map(String)
       : ['pizza'],
-    available: plainAddon.available !== false,
+    available,
+    purchasable,
     order: Number.isFinite(plainAddon.order) ? plainAddon.order : 0,
   };
 }

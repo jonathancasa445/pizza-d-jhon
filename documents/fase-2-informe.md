@@ -1,6 +1,6 @@
 # Informe de Fase 2 — Catálogo nuevo
 
-Fecha: 2026-11-14
+Fecha: 2026-11-16
 
 ## Resumen
 
@@ -50,6 +50,11 @@ No se modificó ningún archivo de `frontend/`.
 - `MenuSection` distingue secciones de presentación de pizza y secciones
   estándar.
 - `Addon` tiene `maxQuantity: 3` por adicional.
+- Cada adicional serializado incluye `purchasable`:
+  - `true` solo si está disponible y tiene `priceCents` entero mayor o igual
+    a 0;
+  - `false` si `priceCents` es `null` o el adicional no está disponible.
+- Los adicionales con precio pendiente siguen visibles en `/api/menu`.
 - La respuesta de `/api/menu` expone los límites:
   - máximo 3 unidades por adicional;
   - máximo 10 unidades de adicionales por pizza.
@@ -111,7 +116,7 @@ Detalle de producto nuevo. Resultado local sin seed:
 npm test
 ```
 
-Resultado: 10 pruebas aprobadas, 0 fallidas.
+Resultado: 13 pruebas aprobadas, 0 fallidas.
 
 Cubren:
 
@@ -122,9 +127,14 @@ Cubren:
 - `allowedFlavorKeys: null` en la mixta, tanto en la respuesta como en el
   modelo de Mongoose;
 - adicionales con `priceCents: null` y `maxQuantity: 3`;
+- `purchasable: false` para adicionales con precio pendiente;
+- `purchasable: true` para adicionales disponibles con precio entero válido,
+  incluido el precio 0;
+- `purchasable: false` para adicionales no disponibles aunque tengan precio;
 - límites globales de adicionales;
 - serialización sin campos internos/legacy;
-- validación de claves de producto.
+- claves válidas como `pizza-jamon` y `pizzas-familiares`;
+- rechazo de claves con caracteres inválidos o asteriscos.
 
 ### Seed en dry-run
 

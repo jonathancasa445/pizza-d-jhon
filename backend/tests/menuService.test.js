@@ -7,6 +7,7 @@ const {
   getStartingPriceCents,
   isValidProductKey,
   productBelongsToSection,
+  serializeAddon,
   serializeProduct,
 } = require('../src/services/menuService');
 
@@ -359,11 +360,45 @@ test('los adicionales con precio null se exponen como Precio por definir', () =>
   const pina = menu.addons.find((addon) => addon.key === 'pina');
 
   assert.equal(pina.priceCents, null);
+  assert.equal(pina.purchasable, false);
   assert.equal(pina.maxQuantity, 3);
   assert.equal(
     menu.addons.every((addon) => addon.maxQuantity === 3),
     true
   );
+});
+
+test('un adicional disponible con precio entero válido es purchasable', () => {
+  const menu = buildMenuResponse({ sections, products, addons });
+  const queso = menu.addons.find((addon) => addon.key === 'queso-extra');
+
+  assert.equal(queso.priceCents, 150);
+  assert.equal(queso.available, true);
+  assert.equal(queso.purchasable, true);
+});
+
+test('un adicional disponible con precio 0 es purchasable', () => {
+  const addon = serializeAddon({
+    key: 'adicional-gratis',
+    name: 'Adicional gratis',
+    priceCents: 0,
+    available: true,
+  });
+
+  assert.equal(addon.priceCents, 0);
+  assert.equal(addon.purchasable, true);
+});
+
+test('un adicional no disponible no es purchasable aunque tenga precio', () => {
+  const addon = serializeAddon({
+    key: 'queso-extra',
+    name: 'Queso extra',
+    priceCents: 150,
+    available: false,
+  });
+
+  assert.equal(addon.available, false);
+  assert.equal(addon.purchasable, false);
 });
 
 test('serializeProduct no expone campos internos ni legacy', () => {
@@ -397,9 +432,13 @@ test('productBelongsToSection respeta presentación y categoría', () => {
 
 test('isValidProductKey valida el formato de las claves', () => {
   assert.equal(isValidProductKey('pizza-jamon'), true);
+  assert.equal(isValidProductKey('pizzas-familiares'), true);
   assert.equal(isValidProductKey('pizza-mixta'), true);
   assert.equal(isValidProductKey('Pizza Jamón'), false);
   assert.equal(isValidProductKey('pizza_jamon'), false);
+  assert.equal(isValidProductKey('pizza*jamon'), false);
+  assert.equal(isValidProductKey('pizzas*familiares'), false);
+  assert.equal(isValidProductKey('pizza-jamon!'), false);
   assert.equal(isValidProductKey(''), false);
   assert.equal(isValidProductKey(null), false);
 });

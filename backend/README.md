@@ -136,9 +136,13 @@ Devuelve:
   menos una variante con precio y que pertenezcan a una sección activa.
 - `addons`: adicionales disponibles, incluidos los que tienen
   `priceCents: null`.
+- Cada adicional incluye `purchasable`: es `true` solo si está disponible y
+  tiene un `priceCents` entero mayor o igual a 0. Es `false` si el precio es
+  `null` o el adicional no está disponible.
 
 Los precios se expresan en centavos enteros. `priceCents: null` significa
-"Precio por definir" y no debe interpretarse como gratuito.
+"Precio por definir" y no debe interpretarse como gratuito. Los adicionales
+con precio pendiente siguen visibles en el catálogo con `purchasable: false`.
 
 ### Detalle de producto
 
