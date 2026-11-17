@@ -134,15 +134,17 @@ Devuelve:
   `productKeys`.
 - `products`: productos nuevos disponibles (`schemaVersion: 1`) que tengan al
   menos una variante con precio y que pertenezcan a una sección activa.
-- `addons`: adicionales disponibles, incluidos los que tienen
-  `priceCents: null`.
+- `addons`: adicionales disponibles. El catálogo inicial usa
+  `priceCents: 100` para los nueve adicionales; la API sigue admitiendo
+  `priceCents: null` para precios pendientes.
 - Cada adicional incluye `purchasable`: es `true` solo si está disponible y
   tiene un `priceCents` entero mayor o igual a 0. Es `false` si el precio es
   `null` o el adicional no está disponible.
 
 Los precios se expresan en centavos enteros. `priceCents: null` significa
-"Precio por definir" y no debe interpretarse como gratuito. Los adicionales
-con precio pendiente siguen visibles en el catálogo con `purchasable: false`.
+"Precio por definir" y no debe interpretarse como gratuito. Si en el futuro
+se agrega un adicional con precio pendiente, seguirá visible en el catálogo
+con `purchasable: false`.
 
 ### Detalle de producto
 
@@ -155,8 +157,18 @@ el producto no existe o no está disponible.
 
 ## Seed del catálogo
 
-El seed está preparado para la nueva estructura, pero **no se ha ejecutado
-sobre la base real**.
+El seed está preparado con el catálogo comercial definitivo, pero **no se ha
+ejecutado sobre la base real**.
+
+El catálogo inicial contiene:
+
+- 6 secciones;
+- 7 pizzas con nombres comerciales, ingredientes, descripciones e imágenes;
+- 9 adicionales con `priceCents: 100` (USD 1.00), `maxQuantity: 3` y límite
+  global de 10 unidades por pizza.
+
+Las imágenes se leen desde `frontend/public/images/menu/pizzas/` y el dry-run
+verifica que las siete rutas existan.
 
 ```bash
 npm run db:seed
@@ -168,6 +180,7 @@ Sin `--apply`:
 - Valida los documentos con los modelos de Mongoose.
 - Valida precios en centavos enteros o `null`.
 - Valida la configuración de la pizza mixta.
+- Verifica que existan las imágenes de las pizzas.
 - Muestra un resumen.
 - **No se conecta a MongoDB.**
 
@@ -185,6 +198,10 @@ El seed:
 - No modifica documentos antiguos que no tengan `key`.
 - No reemplaza los productos actuales.
 - No crea índices automáticamente.
+
+El seed no agrega cargos automáticos por "extra queso" o "extra jamón": esos
+ingredientes forman parte de la receta y del precio de la pizza. Los
+adicionales solo se cobran si el cliente los selecciona.
 
 ## Índices controlados
 
@@ -250,25 +267,27 @@ Sin `--apply` solo muestra los candidatos. La aplicación real requiere
 `legacy`, `available`, `schemaVersion` y `legacyAt`; no toca nombres,
 descripciones, ingredientes, precios, imágenes, fechas originales ni `_id`.
 
-## Datos del catálogo preparado
+## Datos del catálogo inicial
 
-El seed contiene únicamente información proporcionada:
+El seed contiene el catálogo comercial definitivo:
 
 - Seis secciones: pizzas familiares, pizzas medianas, pizzas de borde,
   alitas, acompañantes y bebidas.
-- Seis pizzas normales y una pizza mixta.
+- Seis pizzas normales y una pizza mixta, con nombres comerciales,
+  ingredientes y descripciones aprobadas.
 - Tres presentaciones por pizza: familiar USD 10.00, mediana USD 5.00 y
   de borde USD 12.00.
-- Nueve adicionales con precio pendiente (`null`) y `maxQuantity: 3`.
+- Nueve adicionales con `priceCents: 100` (USD 1.00) y `maxQuantity: 3`.
 - Las secciones de alitas, acompañantes y bebidas quedan vacías.
 - La pizza mixta exige exactamente dos sabores diferentes y usa
   `allowedFlavorKeys: null` para permitir todos los sabores normales
   disponibles. Una lista vacía no permite ninguno; una lista permite solo
   las claves indicadas. Una mixta no puede elegirse como sabor de otra mixta.
 
-Las descripciones, ingredientes e imágenes quedan vacíos porque no fueron
-proporcionados. El frontend mostrará los textos de placeholder definidos
-en la planificación.
+Las siete imágenes se encuentran en `frontend/public/images/menu/pizzas/` y
+el seed verifica que existan. El extra queso y el extra jamón de las recetas
+están incluidos en el precio de esas pizzas; no se agregan como cargos
+automáticos.
 
 ## Precisión monetaria
 

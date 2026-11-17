@@ -1,11 +1,15 @@
 # Informe de Fase 2 — Catálogo nuevo
 
-Fecha: 2026-11-16
+Fecha: 2026-11-17
 
 ## Resumen
 
 Se implementó la Fase 2 del catálogo nuevo sin modificar el frontend, sin
 autenticación, sin panel administrativo, sin pedidos y sin carrito nuevo.
+
+Además, el seed se actualizó con el catálogo comercial definitivo: nombres,
+ingredientes, descripciones, imágenes y precio de los adicionales. El dry-run
+verifica las siete imágenes y no escribe en MongoDB.
 
 No se aplicó el seed, no se crearon índices, no se restauró la base y no se
 marcaron los productos antiguos como legacy. Los tres documentos actuales
@@ -24,6 +28,7 @@ siguen disponibles y `GET /api/products` sigue devolviéndolos.
 - `backend/scripts/sync-indexes.js`
 - `backend/scripts/mark-legacy-products.js`
 - `backend/tests/menuService.test.js`
+- `backend/tests/seedCatalog.test.js`
 
 ## Archivos modificados
 
@@ -54,7 +59,7 @@ No se modificó ningún archivo de `frontend/`.
   - `true` solo si está disponible y tiene `priceCents` entero mayor o igual
     a 0;
   - `false` si `priceCents` es `null` o el adicional no está disponible.
-- Los adicionales con precio pendiente siguen visibles en `/api/menu`.
+- Si un adicional tiene precio pendiente, sigue visible en `/api/menu`.
 - La respuesta de `/api/menu` expone los límites:
   - máximo 3 unidades por adicional;
   - máximo 10 unidades de adicionales por pizza.
@@ -65,6 +70,62 @@ No se modificó ningún archivo de `frontend/`.
   - lista: solo las claves indicadas.
 - El seed de la mixta usa `allowedFlavorKeys: null`.
 - Las pizzas mixtas no se consideran sabores normales para otra mixta.
+
+## Catálogo inicial definitivo del seed
+
+El seed conserva las claves técnicas y contiene 6 secciones, 7 pizzas y 9
+adicionales.
+
+| Clave técnica | Nombre comercial | Imagen |
+|---|---|---|
+| `pizza-jamon` | Amantes al Jamón | `/images/menu/pizzas/amantes-al-jamon.jpg` |
+| `pizza-pepperoni` | Amantes al Pepperoni | `/images/menu/pizzas/amantes-al-pepperoni.jpg` |
+| `pizza-continental` | Continental | `/images/menu/pizzas/continental.jpg` |
+| `pizza-hawaiana` | Hawaiana | `/images/menu/pizzas/hawaiana.jpg` |
+| `pizza-amante-a-la-carne` | Amantes a la Carne | `/images/menu/pizzas/amantes-a-la-carne.jpg` |
+| `pizza-suprema` | Super Suprema | `/images/menu/pizzas/super-suprema.jpg` |
+| `pizza-mixta` | Mixta | `/images/menu/pizzas/mixta.jpg` |
+
+### Ingredientes por pizza
+
+- `pizza-jamon`: salsa pizza, queso mozzarella, mucho jamón y extra queso.
+- `pizza-pepperoni`: salsa pizza, queso mozzarella, mucho pepperoni y extra
+  queso.
+- `pizza-continental`: salsa pizza, queso mozzarella, jamón, chorizo, pimiento
+  y champiñón.
+- `pizza-hawaiana`: salsa pizza, queso mozzarella, jamón, piña y extra jamón.
+- `pizza-amante-a-la-carne`: salsa pizza, queso mozzarella, jamón, pepperoni,
+  salami y tocino.
+- `pizza-suprema`: salsa pizza, queso mozzarella, jamón, pepperoni, chorizo y
+  mix de vegetales (pimiento, cebolla y champiñón).
+- `pizza-mixta`: sin receta fija; depende de los dos sabores seleccionados.
+
+### Presentaciones y mixta
+
+- Familiar: 1000 centavos (USD 10.00).
+- Mediana: 500 centavos (USD 5.00).
+- De borde: 1200 centavos (USD 12.00).
+- Mixta: exactamente dos sabores normales diferentes, mitad y mitad, sin
+  recargo por combinar y con adicionales permitidos.
+
+### Adicionales
+
+Los nueve adicionales tienen `priceCents: 100` (USD 1.00), `maxQuantity: 3` y
+límite global de 10 unidades por pizza:
+
+- Queso extra
+- Jamón extra
+- Pepperoni extra
+- Piña
+- Tocino
+- Chorizo
+- Mix de vegetales
+- Champiñón
+- Salami
+
+El extra queso y el extra jamón que aparecen en las recetas ya están incluidos
+en el precio habitual de esas pizzas. No se agregan como cargos automáticos;
+solo se cobran si el cliente selecciona el adicional.
 
 ## API implementada
 
@@ -116,7 +177,7 @@ Detalle de producto nuevo. Resultado local sin seed:
 npm test
 ```
 
-Resultado: 13 pruebas aprobadas, 0 fallidas.
+Resultado: 21 pruebas aprobadas, 0 fallidas.
 
 Cubren:
 
@@ -134,7 +195,12 @@ Cubren:
 - límites globales de adicionales;
 - serialización sin campos internos/legacy;
 - claves válidas como `pizza-jamon` y `pizzas-familiares`;
-- rechazo de claves con caracteres inválidos o asteriscos.
+- rechazo de claves con caracteres inválidos o asteriscos;
+- datos del seed: 6 secciones, 7 pizzas y 9 adicionales;
+- nombres, ingredientes, descripciones e imágenes aprobadas;
+- adicionales con `priceCents: 100` y `maxQuantity: 3`;
+- existencia de las siete rutas de imágenes;
+- validación completa del seed con Mongoose y archivos de imagen.
 
 ### Seed en dry-run
 
@@ -146,7 +212,8 @@ Resultado:
 
 - 6 secciones;
 - 7 productos (6 normales y 1 mixta);
-- 9 adicionales con precio pendiente;
+- 9 adicionales con `priceCents: 100`;
+- 7 imágenes verificadas;
 - validación con modelos de Mongoose correcta;
 - no se conectó a MongoDB;
 - no se escribió nada.

@@ -18,13 +18,21 @@
  *   npm run db:seed -- --apply
  */
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const MenuSection = require('../src/models/MenuSection');
 const Product = require('../src/models/Product');
 const Addon = require('../src/models/Addon');
 const {
   PIZZA_ADDON_GROUP_KEY,
   MAX_ADDON_QUANTITY_PER_ADDON,
+  MAX_ADDON_UNITS_PER_PIZZA,
 } = require('../src/constants/catalog');
+
+const FRONTEND_PUBLIC_DIR = path.resolve(__dirname, '../../frontend/public');
+const PIZZA_IMAGE_PATH_PREFIX = '/images/menu/pizzas/';
+const ADDON_PRICE_CENTS = 100;
 
 const SECTION_DOCUMENTS = [
   {
@@ -114,13 +122,100 @@ const PRESENTATION_VARIANTS = [
 ];
 
 const PIZZA_DEFINITIONS = [
-  { key: 'pizza-jamon', name: 'Jamón' },
-  { key: 'pizza-pepperoni', name: 'Pepperoni' },
-  { key: 'pizza-hawaiana', name: 'Hawaiana' },
-  { key: 'pizza-amante-a-la-carne', name: 'Amante a la carne' },
-  { key: 'pizza-suprema', name: 'Suprema' },
-  { key: 'pizza-continental', name: 'Continental' },
-  { key: 'pizza-mixta', name: 'Mixta', isMix: true },
+  {
+    key: 'pizza-jamon',
+    name: 'Amantes al Jamón',
+    description:
+      'Para quienes disfrutan del jamón en cada bocado. Una deliciosa combinación de salsa de pizza, mozzarella, abundante jamón y extra queso.',
+    ingredients: [
+      'Salsa pizza',
+      'Queso mozzarella',
+      'Mucho jamón',
+      'Extra queso',
+    ],
+    imageUrl: '/images/menu/pizzas/amantes-al-jamon.jpg',
+  },
+  {
+    key: 'pizza-pepperoni',
+    name: 'Amantes al Pepperoni',
+    description:
+      'Una pizza irresistible para los amantes del pepperoni, con salsa de pizza, mozzarella, abundante pepperoni y extra queso.',
+    ingredients: [
+      'Salsa pizza',
+      'Queso mozzarella',
+      'Mucho pepperoni',
+      'Extra queso',
+    ],
+    imageUrl: '/images/menu/pizzas/amantes-al-pepperoni.jpg',
+  },
+  {
+    key: 'pizza-continental',
+    name: 'Continental',
+    description:
+      'Una combinación llena de sabor que reúne jamón, chorizo, pimiento y champiñones sobre una base de salsa de pizza y queso mozzarella.',
+    ingredients: [
+      'Salsa pizza',
+      'Queso mozzarella',
+      'Jamón',
+      'Chorizo',
+      'Pimiento',
+      'Champiñón',
+    ],
+    imageUrl: '/images/menu/pizzas/continental.jpg',
+  },
+  {
+    key: 'pizza-hawaiana',
+    name: 'Hawaiana',
+    description:
+      'La combinación perfecta entre lo dulce y lo salado. Deliciosa mezcla de jamón, piña y extra jamón, acompañada de salsa de pizza y mozzarella.',
+    ingredients: [
+      'Salsa pizza',
+      'Queso mozzarella',
+      'Jamón',
+      'Piña',
+      'Extra jamón',
+    ],
+    imageUrl: '/images/menu/pizzas/hawaiana.jpg',
+  },
+  {
+    key: 'pizza-amante-a-la-carne',
+    name: 'Amantes a la Carne',
+    description:
+      'Una opción cargada de sabor para los amantes de las carnes: jamón, pepperoni, salami y tocino, sobre salsa de pizza y queso mozzarella.',
+    ingredients: [
+      'Salsa pizza',
+      'Queso mozzarella',
+      'Jamón',
+      'Pepperoni',
+      'Salami',
+      'Tocino',
+    ],
+    imageUrl: '/images/menu/pizzas/amantes-a-la-carne.jpg',
+  },
+  {
+    key: 'pizza-suprema',
+    name: 'Super Suprema',
+    description:
+      'Una combinación completa de sabores con jamón, pepperoni, chorizo y mix de vegetales (pimiento, cebolla y champiñón), sobre salsa de pizza y mozzarella.',
+    ingredients: [
+      'Salsa pizza',
+      'Queso mozzarella',
+      'Jamón',
+      'Pepperoni',
+      'Chorizo',
+      'Mix de vegetales (pimiento, cebolla y champiñón)',
+    ],
+    imageUrl: '/images/menu/pizzas/super-suprema.jpg',
+  },
+  {
+    key: 'pizza-mixta',
+    name: 'Mixta',
+    description:
+      '¡Dos sabores en una sola pizza! Escoge tus dos favoritos y disfruta de una mitad de cada sabor, para compartir y disfrutar de lo mejor de ambos.',
+    ingredients: [],
+    imageUrl: '/images/menu/pizzas/mixta.jpg',
+    isMix: true,
+  },
 ];
 
 const ADDON_DEFINITIONS = [
@@ -139,12 +234,11 @@ function buildProducts() {
   return PIZZA_DEFINITIONS.map((definition, index) => ({
     key: definition.key,
     name: definition.name,
-    // Los textos reales no fueron proporcionados. No se inventan.
-    description: '',
-    imageUrl: '',
+    description: definition.description,
+    imageUrl: definition.imageUrl,
     kind: 'pizza',
     categoryKey: null,
-    ingredients: [],
+    ingredients: [...definition.ingredients],
     variantLabel: 'Presentación',
     variants: PRESENTATION_VARIANTS.map((variant) => ({ ...variant })),
     optionGroups: [],
@@ -170,8 +264,8 @@ function buildAddons() {
   return ADDON_DEFINITIONS.map((definition, index) => ({
     key: definition.key,
     name: definition.name,
-    // Precio pendiente de configuración. No se asume gratuito.
-    priceCents: null,
+    // Precio comercial aprobado: USD 1.00 (100 centavos).
+    priceCents: ADDON_PRICE_CENTS,
     maxQuantity: MAX_ADDON_QUANTITY_PER_ADDON,
     imageUrl: '',
     groupKey: PIZZA_ADDON_GROUP_KEY,
@@ -213,6 +307,30 @@ function assertValidPrice(priceCents, label) {
     throw new Error(
       `${label}: priceCents debe ser un entero mayor o igual a 0, o null.`
     );
+  }
+}
+
+function assertProductImagesExist() {
+  for (const product of CATALOG.products) {
+    if (
+      typeof product.imageUrl !== 'string' ||
+      !product.imageUrl.startsWith(PIZZA_IMAGE_PATH_PREFIX)
+    ) {
+      throw new Error(
+        `Producto "${product.key}": imageUrl debe comenzar con "${PIZZA_IMAGE_PATH_PREFIX}".`
+      );
+    }
+
+    const absolutePath = path.resolve(
+      FRONTEND_PUBLIC_DIR,
+      product.imageUrl.slice(1)
+    );
+
+    if (!fs.existsSync(absolutePath) || !fs.statSync(absolutePath).isFile()) {
+      throw new Error(
+        `Producto "${product.key}": no existe la imagen "${product.imageUrl}".`
+      );
+    }
   }
 }
 
@@ -322,11 +440,44 @@ async function validateCatalog() {
       );
     }
 
+    if (
+      typeof product.description !== 'string' ||
+      !product.description.trim()
+    ) {
+      throw new Error(
+        `Producto "${product.key}": description es obligatorio.`
+      );
+    }
+
+    if (!Array.isArray(product.ingredients)) {
+      throw new Error(
+        `Producto "${product.key}": ingredients debe ser una lista.`
+      );
+    }
+
+    if (!product.isMix && product.ingredients.length === 0) {
+      throw new Error(
+        `Producto "${product.key}": ingredients es obligatorio.`
+      );
+    }
+
+    if (typeof product.imageUrl !== 'string' || !product.imageUrl.trim()) {
+      throw new Error(`Producto "${product.key}": imageUrl es obligatorio.`);
+    }
+
     await validateWithModel(Product, product, `Producto "${product.key}"`);
   }
 
+  assertProductImagesExist();
+
   for (const addon of CATALOG.addons) {
     assertValidPrice(addon.priceCents, `Adicional "${addon.key}"`);
+
+    if (addon.priceCents !== ADDON_PRICE_CENTS) {
+      throw new Error(
+        `Adicional "${addon.key}": priceCents debe ser ${ADDON_PRICE_CENTS}.`
+      );
+    }
 
     if (addon.maxQuantity !== MAX_ADDON_QUANTITY_PER_ADDON) {
       throw new Error(
@@ -353,10 +504,15 @@ function printSummary() {
   console.log('\nProductos:');
   CATALOG.products.forEach((product) => {
     const mixLabel = product.isMix ? ' [mixta, allowedFlavorKeys=null]' : '';
-    console.log(`- ${product.key} (${product.name})${mixLabel}`);
+    console.log(
+      `- ${product.key} (${product.name}) -> ${product.imageUrl}${mixLabel}`
+    );
   });
+  console.log(`\nImágenes verificadas: ${CATALOG.products.length}`);
   console.log(
-    `\nAdicionales (todos con precio pendiente, máximo ${MAX_ADDON_QUANTITY_PER_ADDON} por adicional):`
+    `\nAdicionales (precio ${ADDON_PRICE_CENTS} centavos = USD 1.00, ` +
+      `máximo ${MAX_ADDON_QUANTITY_PER_ADDON} por adicional, ` +
+      `límite global ${MAX_ADDON_UNITS_PER_PIZZA} por pizza):`
   );
   CATALOG.addons.forEach((addon) => {
     console.log(`- ${addon.key} (${addon.name})`);
@@ -468,12 +624,20 @@ async function main() {
   await applyCatalog();
 }
 
-main()
-  .catch((error) => {
-    console.error(`\nError durante el seed: ${safeErrorMessage(error)}`);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    const mongoose = require('mongoose');
-    await mongoose.connection.close();
-  });
+if (require.main === module) {
+  main()
+    .catch((error) => {
+      console.error(`\nError durante el seed: ${safeErrorMessage(error)}`);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      const mongoose = require('mongoose');
+      await mongoose.connection.close();
+    });
+}
+
+module.exports = {
+  ADDON_PRICE_CENTS,
+  CATALOG,
+  validateCatalog,
+};
