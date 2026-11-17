@@ -1,3 +1,7 @@
+:root {
+  --header-height: 76px;
+}
+
 #root {
   width: 100%;
   min-height: 100vh;
@@ -9,6 +13,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: var(--header-height);
 }
 
 body {
@@ -22,12 +27,17 @@ body {
 }
 
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 900;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
   padding: 20px 8%;
+  border-bottom: 1px solid #ead9c8;
   background-color: #fffaf3;
+  box-shadow: 0 4px 16px rgb(53 36 29 / 8%);
 }
 
 .brand {
@@ -122,13 +132,26 @@ body {
 }
 
 @media (max-width: 600px) {
+  :root {
+    --header-height: 80px;
+  }
+
   .header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    padding: 12px 6%;
+  }
+
+  .brand {
+    font-size: 1.25rem;
   }
 
   .navigation {
-    gap: 16px;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px 14px;
+    font-size: 0.92rem;
   }
 
   .hero {
