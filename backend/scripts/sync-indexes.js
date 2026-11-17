@@ -187,10 +187,13 @@ async function main() {
   console.log('\nCreando índices...');
 
   for (const item of inspections) {
-    const created = await item.model.createIndexes();
+    await item.model.createIndexes();
+
+    const indexes = await item.model.collection.indexes();
+    const catalogIndexes = indexes.filter((index) => index.name !== '_id_');
 
     console.log(
-      `- ${item.label}: ${created.length} índice(s) disponibles en ${item.model.collection.name}.`
+      `- ${item.label}: ${catalogIndexes.length} índice(s) disponibles en ${item.model.collection.name}.`
     );
   }
 
