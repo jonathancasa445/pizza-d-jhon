@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
+import CartDrawer from './components/CartDrawer';
+import CartItem from './components/CartItem';
 import MenuSection from './components/MenuSection';
 import PizzaConfigurator from './components/PizzaConfigurator';
 import { useMenu } from './hooks/useMenu';
 import {
   getCartCount,
   getCartItemId,
-  getCartItemLineTotalCents,
   getCartItemQuantity,
-  getCartItemUnitPriceCents,
   getCartTotalCents,
 } from './utils/cart';
 import { formatCents } from './utils/money';
@@ -17,6 +17,7 @@ function App() {
   const [currentYear] = useState(() => new Date().getFullYear());
   const { menu, loading, error, retry } = useMenu();
   const [selectedPizza, setSelectedPizza] = useState(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('pizza-cart');
@@ -51,6 +52,7 @@ function App() {
   }, [cart]);
 
   const handleSelectProduct = useCallback((product, section) => {
+    setIsCartOpen(false);
     setSelectedPizza({
       product,
       presentationKey: section.presentationKey,
@@ -60,6 +62,24 @@ function App() {
 
   const handleCloseConfigurator = useCallback(() => {
     setSelectedPizza(null);
+  }, []);
+
+  const handleOpenCart = useCallback(() => {
+    setIsCartOpen(true);
+  }, []);
+
+  const handleCloseCart = useCallback(() => {
+    setIsCartOpen(false);
+  }, []);
+
+  const handleGoToMenu = useCallback(() => {
+    setIsCartOpen(false);
+    window.setTimeout(() => {
+      document.getElementById('menu')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 0);
   }, []);
 
   const handleAddPizza = useCallback((cartItem) => {
@@ -132,9 +152,16 @@ function App() {
           <a href="#inicio">Inicio</a>
           <a href="#menu">Menú</a>
           <a href="#contacto">Contacto</a>
-          <a href="#carrito">
+
+          <button
+            type="button"
+            className="cart-link"
+            onClick={handleOpenCart}
+            aria-haspopup="dialog"
+            aria-expanded={isCartOpen}
+          >
             Carrito ({cartCount})
-          </a>
+          </button>
         </nav>
       </header>
 
@@ -219,116 +246,15 @@ function App() {
             <p>Tu carrito está vacío. ¡Elige tus pizzas favoritas!</p>
           ) : (
             <div className="cart-list">
-              {cart.map((item, index) => {
-                const itemId = getCartItemId(item, index);
-                const quantity = getCartItemQuantity(item);
-                const unitPriceCents =
-                  getCartItemUnitPriceCents(item);
-                const lineTotalCents =
-                  getCartItemLineTotalCents(item);
-                const flavors = Array.isArray(item.selectedFlavors)
-                  ? item.selectedFlavors
-                  : [];
-                const addons = Array.isArray(item.addons)
-                  ? item.addons
-                  : [];
-
-                return (
-                  <article
-                    className="cart-item"
-                    key={`${itemId}-${index}`}
-                  >
-                    <div className="cart-item-main">
-                      {item.imageUrl && (
-                        <img
-                          className="cart-item-image"
-                          src={item.imageUrl}
-                          alt=""
-                        />
-                      )}
-
-                      <div className="cart-item-details">
-                        <h3>{item.name || 'Producto sin nombre'}</h3>
-
-                        {item.presentationName && (
-                          <p>
-                            <strong>Presentación:</strong>{' '}
-                            {item.presentationName}
-                          </p>
-                        )}
-
-                        {flavors.length > 0 && (
-                          <p>
-                            <strong>Sabores:</strong>{' '}
-                            {flavors
-                              .map((flavor) => flavor.name)
-                              .join(' + ')}
-                          </p>
-                        )}
-
-                        {addons.length > 0 && (
-                          <p>
-                            <strong>Complementos:</strong>{' '}
-                            {addons
-                              .map(
-                                (addon) =>
-                                  `${addon.name} ×${addon.quantity}`
-                              )
-                              .join(', ')}
-                          </p>
-                        )}
-
-                        <p>
-                          Precio unitario:{' '}
-                          {formatCents(unitPriceCents)}
-                        </p>
-
-                        <div className="quantity-controls">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              changeQuantity(itemId, -1)
-                            }
-                            aria-label={`Disminuir cantidad de ${
-                              item.name || 'producto'
-                            }`}
-                          >
-                            −
-                          </button>
-
-                          <span>{quantity}</span>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              changeQuantity(itemId, 1)
-                            }
-                            aria-label={`Aumentar cantidad de ${
-                              item.name || 'producto'
-                            }`}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="cart-item-actions">
-                      <p className="cart-item-total">
-                        {formatCents(lineTotalCents)}
-                      </p>
-
-                      <button
-                        type="button"
-                        className="remove-button"
-                        onClick={() => removeFromCart(itemId)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+              {cart.map((item, index) => (
+                <CartItem
+                  key={`${getCartItemId(item, index)}-${index}`}
+                  item={item}
+                  index={index}
+                  onChangeQuantity={changeQuantity}
+                  onRemove={removeFromCart}
+                />
+              ))}
 
               <div className="cart-summary">
                 <h3>Total: {formatCents(cartTotalCents)}</h3>
@@ -359,6 +285,17 @@ function App() {
           menu={menu}
           onClose={handleCloseConfigurator}
           onAdd={handleAddPizza}
+        />
+      )}
+
+      {isCartOpen && (
+        <CartDrawer
+          cart={cart}
+          onClose={handleCloseCart}
+          onChangeQuantity={changeQuantity}
+          onRemove={removeFromCart}
+          onClear={clearCart}
+          onGoToMenu={handleGoToMenu}
         />
       )}
     </div>
