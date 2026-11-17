@@ -1,21 +1,30 @@
 #!/usr/bin/env node
 
 /**
- * Seed preparado para la nueva estructura del catálogo.
+ * Seed del catálogo nuevo (Fase 2).
  *
  * IMPORTANTE:
- * - Por defecto se ejecuta en modo dry-run: valida los datos y no conecta
- *   con MongoDB.
- * - Solo escribe si se ejecuta con --apply.
+ * - Por defecto se ejecuta en modo dry-run: valida los datos con los modelos
+ *   de Mongoose y no conecta con MongoDB.
+ * - Solo escribe si se ejecuta con --apply y con autorización explícita.
  * - No elimina documentos existentes.
  * - Los documentos antiguos sin `key` no se tocan.
  * - Los precios se guardan en centavos enteros para evitar errores de
  *   precisión. Ejemplo: 1000 = USD 10.00.
+ * - `priceCents: null` significa "Precio por definir"; no es gratuito.
  *
  * Uso:
  *   npm run db:seed
  *   npm run db:seed -- --apply
  */
+
+const MenuSection = require('../src/models/MenuSection');
+const Product = require('../src/models/Product');
+const Addon = require('../src/models/Addon');
+const {
+  PIZZA_ADDON_GROUP_KEY,
+  MAX_ADDON_QUANTITY_PER_ADDON,
+} = require('../src/constants/catalog');
 
 const SECTION_DOCUMENTS = [
   {
@@ -139,18 +148,21 @@ function buildProducts() {
     variantLabel: 'Presentación',
     variants: PRESENTATION_VARIANTS.map((variant) => ({ ...variant })),
     optionGroups: [],
-    addonGroupKeys: ['pizza-extras'],
+    addonGroupKeys: [PIZZA_ADDON_GROUP_KEY],
     isMix: Boolean(definition.isMix),
     mixConfig: definition.isMix
       ? {
           flavorCount: 2,
           distinctFlavors: true,
-          allowedFlavorKeys: [],
+          // null = todos los sabores normales disponibles.
+          // [] = ningún sabor; lista = solo las claves indicadas.
+          allowedFlavorKeys: null,
         }
       : null,
     available: true,
     order: index + 1,
     schemaVersion: 1,
+    legacy: false,
   }));
 }
 
@@ -160,8 +172,9 @@ function buildAddons() {
     name: definition.name,
     // Precio pendiente de configuración. No se asume gratuito.
     priceCents: null,
+    maxQuantity: MAX_ADDON_QUANTITY_PER_ADDON,
     imageUrl: '',
-    groupKey: 'pizza-extras',
+    groupKey: PIZZA_ADDON_GROUP_KEY,
     appliesToKinds: ['pizza'],
     available: true,
     order: index + 1,
@@ -196,20 +209,102 @@ function assertValidPrice(priceCents, label) {
     return;
   }
 
-  if (
-    !Number.isInteger(priceCents) ||
-    priceCents < 0
-  ) {
+  if (!Number.isInteger(priceCents) || priceCents < 0) {
     throw new Error(
       `${label}: priceCents debe ser un entero mayor o igual a 0, o null.`
     );
   }
 }
 
-function validateCatalog() {
+async function validateWithModel(Model, document, label) {
+  const instance = new Model(document);
+
+  try {
+    await instance.validate();
+  } catch (error) {
+    const details = Object.values(error.errors || {})
+      .map((item) => item.message)
+      .join('; ');
+
+    throw new Error(
+      `${label}: ${details || error.message || 'documento inválido.'}`
+    );
+  }
+}
+
+function validateMixConfiguration() {
+  const normalFlavorKeys = new Set(
+    CATALOG.products
+      .filter((product) => product.kind === 'pizza' && !product.isMix)
+      .map((product) => product.key)
+  );
+
+  for (const product of CATALOG.products) {
+    if (!product.isMix) {
+      continue;
+    }
+
+    const mixConfig = product.mixConfig;
+
+    if (
+      !mixConfig ||
+      mixConfig.flavorCount !== 2 ||
+      mixConfig.distinctFlavors !== true
+    ) {
+      throw new Error(
+        `Producto "${product.key}": la configuración de mixta debe exigir exactamente dos sabores diferentes.`
+      );
+    }
+
+    if (
+      mixConfig.allowedFlavorKeys !== null &&
+      !Array.isArray(mixConfig.allowedFlavorKeys)
+    ) {
+      throw new Error(
+        `Producto "${product.key}": allowedFlavorKeys debe ser null o una lista.`
+      );
+    }
+
+    if (Array.isArray(mixConfig.allowedFlavorKeys)) {
+      const seen = new Set();
+
+      for (const flavorKey of mixConfig.allowedFlavorKeys) {
+        if (flavorKey === product.key) {
+          throw new Error(
+            `Producto "${product.key}": una mixta no puede seleccionarse a sí misma como sabor.`
+          );
+        }
+
+        if (!normalFlavorKeys.has(flavorKey)) {
+          throw new Error(
+            `Producto "${product.key}": el sabor "${flavorKey}" no es un sabor normal disponible.`
+          );
+        }
+
+        if (seen.has(flavorKey)) {
+          throw new Error(
+            `Producto "${product.key}": sabor duplicado "${flavorKey}".`
+          );
+        }
+
+        seen.add(flavorKey);
+      }
+    }
+  }
+}
+
+async function validateCatalog() {
   assertUniqueKeys(CATALOG.sections, 'Secciones');
   assertUniqueKeys(CATALOG.products, 'Productos');
   assertUniqueKeys(CATALOG.addons, 'Adicionales');
+
+  for (const section of CATALOG.sections) {
+    await validateWithModel(
+      MenuSection,
+      section,
+      `Sección "${section.key}"`
+    );
+  }
 
   for (const product of CATALOG.products) {
     if (!Array.isArray(product.variants) || product.variants.length === 0) {
@@ -227,27 +322,27 @@ function validateCatalog() {
       );
     }
 
-    if (product.isMix) {
-      if (
-        !product.mixConfig ||
-        product.mixConfig.flavorCount !== 2 ||
-        product.mixConfig.distinctFlavors !== true
-      ) {
-        throw new Error(
-          `Producto "${product.key}": la configuración de mixta debe exigir exactamente dos sabores diferentes.`
-        );
-      }
-    }
+    await validateWithModel(Product, product, `Producto "${product.key}"`);
   }
 
   for (const addon of CATALOG.addons) {
     assertValidPrice(addon.priceCents, `Adicional "${addon.key}"`);
+
+    if (addon.maxQuantity !== MAX_ADDON_QUANTITY_PER_ADDON) {
+      throw new Error(
+        `Adicional "${addon.key}": maxQuantity debe ser ${MAX_ADDON_QUANTITY_PER_ADDON}.`
+      );
+    }
+
+    await validateWithModel(Addon, addon, `Adicional "${addon.key}"`);
   }
+
+  validateMixConfiguration();
 }
 
 function printSummary() {
-  console.log('Seed del catálogo preparado');
-  console.log('---------------------------');
+  console.log('Seed del catálogo preparado (Fase 2)');
+  console.log('------------------------------------');
   console.log(`Secciones: ${CATALOG.sections.length}`);
   console.log(`Productos: ${CATALOG.products.length}`);
   console.log(`Adicionales: ${CATALOG.addons.length}`);
@@ -257,10 +352,12 @@ function printSummary() {
   });
   console.log('\nProductos:');
   CATALOG.products.forEach((product) => {
-    const mixLabel = product.isMix ? ' [mixta]' : '';
+    const mixLabel = product.isMix ? ' [mixta, allowedFlavorKeys=null]' : '';
     console.log(`- ${product.key} (${product.name})${mixLabel}`);
   });
-  console.log('\nAdicionales (todos con precio pendiente):');
+  console.log(
+    `\nAdicionales (todos con precio pendiente, máximo ${MAX_ADDON_QUANTITY_PER_ADDON} por adicional):`
+  );
   CATALOG.addons.forEach((addon) => {
     console.log(`- ${addon.key} (${addon.name})`);
   });
@@ -268,69 +365,82 @@ function printSummary() {
     '\nModo dry-run: no se conectó a MongoDB y no se escribió nada.'
   );
   console.log(
-    'Para aplicar los cambios de forma idempotente: npm run db:seed -- --apply'
+    'Para aplicar los cambios se requiere autorización explícita: npm run db:seed -- --apply'
   );
   console.log(
     'El seed no elimina documentos antiguos ni modifica documentos sin key.'
   );
 }
 
+async function upsertDocuments(Model, documents) {
+  let created = 0;
+  let updated = 0;
+
+  for (const document of documents) {
+    const existing = await Model.findOne({ key: document.key }).lean();
+
+    if (existing && existing.schemaVersion !== 1) {
+      throw new Error(
+        `La key "${document.key}" ya existe en un documento que no pertenece al catálogo nuevo. No se sobrescribe.`
+      );
+    }
+
+    await Model.findOneAndUpdate(
+      { key: document.key },
+      { $set: document },
+      {
+        upsert: true,
+        new: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+
+    if (existing) {
+      updated += 1;
+    } else {
+      created += 1;
+    }
+  }
+
+  return {
+    collection: Model.collection.name,
+    created,
+    updated,
+  };
+}
+
 async function applyCatalog() {
   const mongoose = require('mongoose');
   const env = require('../src/config/env');
-  const { sections, products, addons } = CATALOG;
 
   await mongoose.connect(env.MONGODB_URI, {
     serverSelectionTimeoutMS: 15000,
   });
 
-  const db = mongoose.connection.db;
-  const now = new Date();
-
-  async function upsertCollection(collectionName, documents) {
-    const collection = db.collection(collectionName);
-    const operations = documents.map((document) => ({
-      updateOne: {
-        filter: { key: document.key },
-        update: {
-          $set: {
-            ...document,
-            updatedAt: now,
-          },
-          $setOnInsert: {
-            createdAt: now,
-          },
-        },
-        upsert: true,
-      },
-    }));
-
-    const result = await collection.bulkWrite(operations, {
-      ordered: false,
-    });
-
-    return {
-      collection: collectionName,
-      matched: result.matchedCount,
-      upserted: result.upsertedCount,
-      modified: result.modifiedCount,
-    };
-  }
-
   const results = [];
 
-  results.push(await upsertCollection('menusections', sections));
-  results.push(await upsertCollection('products', products));
-  results.push(await upsertCollection('addons', addons));
+  results.push(await upsertDocuments(MenuSection, CATALOG.sections));
+  results.push(await upsertDocuments(Product, CATALOG.products));
+  results.push(await upsertDocuments(Addon, CATALOG.addons));
 
   console.log('Seed aplicado');
   console.log('-------------');
   results.forEach((result) => {
     console.log(
-      `- ${result.collection}: matched=${result.matched}, upserted=${result.upserted}, modified=${result.modified}`
+      `- ${result.collection}: creados=${result.created}, actualizados=${result.updated}`
     );
   });
   console.log('No se eliminó ningún documento.');
+}
+
+function safeErrorMessage(error) {
+  const rawMessage = String(error.message || error);
+  const mongoUri = process.env.MONGODB_URI;
+
+  return mongoUri
+    ? rawMessage.replaceAll(mongoUri, '[MONGODB_URI oculto]')
+    : rawMessage;
 }
 
 async function main() {
@@ -348,7 +458,7 @@ async function main() {
     return;
   }
 
-  validateCatalog();
+  await validateCatalog();
   printSummary();
 
   if (!apply) {
@@ -360,13 +470,7 @@ async function main() {
 
 main()
   .catch((error) => {
-    const rawMessage = String(error.message || error);
-    const mongoUri = process.env.MONGODB_URI;
-    const safeMessage = mongoUri
-      ? rawMessage.replaceAll(mongoUri, '[MONGODB_URI oculto]')
-      : rawMessage;
-
-    console.error(`\nError durante el seed: ${safeMessage}`);
+    console.error(`\nError durante el seed: ${safeErrorMessage(error)}`);
     process.exitCode = 1;
   })
   .finally(async () => {

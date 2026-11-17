@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const connectDB = require('./database');
 const productRoutes = require('./routes/productRoutes');
+const menuRoutes = require('./routes/menuRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,8 +22,11 @@ app.get('/', (req, res) => {
   res.send('¡Bienvenido al servidor de Pizza D\' Jhon!');
 });
 
-// Rutas de productos.
+// Rutas de productos (endpoint legado compatible con el frontend actual).
 app.use('/api/products', productRoutes);
+
+// Catálogo público nuevo.
+app.use('/api/menu', menuRoutes);
 
 async function startServer() {
   await connectDB();

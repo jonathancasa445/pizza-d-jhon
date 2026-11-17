@@ -1,7 +1,11 @@
 # Backend — Pizza D' Jhon
 
-Este documento describe la configuración y las herramientas de la Fase 1.
+Este documento describe la configuración y las herramientas de las Fases 1 y 2.
 No contiene credenciales ni valores reales de variables de entorno.
+
+La Fase 2 agrega el catálogo público nuevo sin modificar el frontend actual.
+El endpoint legado `GET /api/products` sigue mostrando los tres productos
+antiguos. El catálogo nuevo se consulta en `GET /api/menu`.
 
 ## Requisitos
 
@@ -19,8 +23,12 @@ npm install
 ## Comandos actuales
 
 ```bash
-npm start       # inicia el servidor
-npm run dev     # inicia el servidor con recarga automática
+npm start            # inicia el servidor
+npm run dev          # inicia el servidor con recarga automática
+npm test             # pruebas unitarias del servicio de menú
+npm run db:seed      # dry-run del catálogo nuevo
+npm run db:indexes   # dry-run de índices
+npm run db:restore   # dry-run de restauración
 ```
 
 ## Variables de entorno
@@ -63,8 +71,11 @@ npm run db:backup
 ```
 
 Exporta la colección `products` a `backend/backups/` en Extended JSON.
+El respaldo de la Fase 2 incluye únicamente la colección `products`, que es
+la que contiene los tres documentos antiguos que deben preservarse.
 También genera un archivo `.meta.json` con:
 
+- Colección incluida.
 - Cantidad de documentos.
 - Tamaño del archivo.
 - SHA-256.
@@ -85,6 +96,59 @@ Para respaldar otra colección:
 npm run db:backup -- --collection=products
 ```
 
+## API de la Fase 2
+
+### Endpoint legado
+
+```http
+GET /api/products
+```
+
+Devuelve únicamente los documentos antiguos (`schemaVersion` distinto de 1)
+para que el frontend actual siga mostrando los tres productos durante toda
+la Fase 2. La forma de la respuesta conserva los campos que ya consume el
+frontend: `_id`, `name`, `description`, `ingredients`, `price`, `imageUrl`,
+`category` y `available`.
+
+### Catálogo nuevo
+
+```http
+GET /api/menu
+```
+
+Devuelve:
+
+```json
+{
+  "sections": [],
+  "products": [],
+  "addons": [],
+  "limits": {
+    "maxQuantityPerAddon": 3,
+    "maxAddonUnitsPerPizza": 10
+  }
+}
+```
+
+- `sections`: secciones activas ordenadas, con `startingPriceCents` y
+  `productKeys`.
+- `products`: productos nuevos disponibles (`schemaVersion: 1`) que tengan al
+  menos una variante con precio y que pertenezcan a una sección activa.
+- `addons`: adicionales disponibles, incluidos los que tienen
+  `priceCents: null`.
+
+Los precios se expresan en centavos enteros. `priceCents: null` significa
+"Precio por definir" y no debe interpretarse como gratuito.
+
+### Detalle de producto
+
+```http
+GET /api/products/:key
+```
+
+Devuelve el producto nuevo y los adicionales aplicables. Responde `404` si
+el producto no existe o no está disponible.
+
 ## Seed del catálogo
 
 El seed está preparado para la nueva estructura, pero **no se ha ejecutado
@@ -97,13 +161,14 @@ npm run db:seed
 Sin `--apply`:
 
 - Valida las claves únicas.
+- Valida los documentos con los modelos de Mongoose.
 - Valida precios en centavos enteros o `null`.
 - Valida la configuración de la pizza mixta.
 - Muestra un resumen.
 - **No se conecta a MongoDB.**
 
-Para aplicar los cambios de forma idempotente, cuando la Fase 2 esté
-aprobada:
+Para aplicar los cambios de forma idempotente, cuando exista autorización
+explícita:
 
 ```bash
 npm run db:seed -- --apply
@@ -115,7 +180,71 @@ El seed:
 - No elimina documentos.
 - No modifica documentos antiguos que no tengan `key`.
 - No reemplaza los productos actuales.
-- No crea índices únicos automáticamente.
+- No crea índices automáticamente.
+
+## Índices controlados
+
+Los modelos usan `autoIndex: false` y `autoCreate: false` para que una simple
+lectura o prueba no cree colecciones ni índices. Los índices se crean
+únicamente con:
+
+```bash
+npm run db:indexes
+```
+
+Sin `--apply`:
+
+- Conecta en modo lectura.
+- Revisa claves duplicadas y documentos incompatibles.
+- Muestra los índices que se crearían.
+- **No crea ni modifica índices.**
+
+Con autorización explícita:
+
+```bash
+npm run db:indexes -- --apply
+```
+
+El script usa `createIndexes()` y no elimina índices existentes. Antes de
+crear índices únicos por `key`, aborta si encuentra claves duplicadas o
+documentos incompatibles.
+
+## Restauración controlada
+
+```bash
+npm run db:restore
+```
+
+Sin `--apply` es un dry-run de solo lectura. Compara el respaldo con MongoDB
+y reporta qué documentos crearía, actualizaría, dejaría sin cambios u
+omitiría por tener datos más recientes en la base.
+
+```bash
+npm run db:restore -- --file=backups/products-....json --apply
+```
+
+- Restaura por `_id`.
+- No elimina documentos que no estén en el respaldo.
+- Verifica SHA-256 y conteo contra la metadata.
+- No sobrescribe documentos más recientes sin
+  `--allow-overwrite-newer`.
+- La colección por defecto es `products`; se puede indicar otra con
+  `--collection=...`. El respaldo actual contiene `products`.
+
+## Documentos legacy
+
+Los tres documentos actuales se conservan. El script
+`db:mark-legacy` está preparado para la Fase 3, pero no debe aplicarse en la
+Fase 2:
+
+```bash
+npm run db:mark-legacy
+```
+
+Sin `--apply` solo muestra los candidatos. La aplicación real requiere
+`--apply --confirm-legacy` y queda aplazada a la Fase 3. Solo modifica
+`legacy`, `available`, `schemaVersion` y `legacyAt`; no toca nombres,
+descripciones, ingredientes, precios, imágenes, fechas originales ni `_id`.
 
 ## Datos del catálogo preparado
 
@@ -126,8 +255,12 @@ El seed contiene únicamente información proporcionada:
 - Seis pizzas normales y una pizza mixta.
 - Tres presentaciones por pizza: familiar USD 10.00, mediana USD 5.00 y
   de borde USD 12.00.
-- Nueve ingredientes adicionales con precio pendiente (`null`).
+- Nueve adicionales con precio pendiente (`null`) y `maxQuantity: 3`.
 - Las secciones de alitas, acompañantes y bebidas quedan vacías.
+- La pizza mixta exige exactamente dos sabores diferentes y usa
+  `allowedFlavorKeys: null` para permitir todos los sabores normales
+  disponibles. Una lista vacía no permite ninguno; una lista permite solo
+  las claves indicadas. Una mixta no puede elegirse como sabor de otra mixta.
 
 Las descripciones, ingredientes e imágenes quedan vacíos porque no fueron
 proporcionados. El frontend mostrará los textos de placeholder definidos
@@ -159,7 +292,12 @@ debe contemplar dominios distintos:
 - `JWT_SECRET` estable en el entorno de Render.
 - HTTPS obligatorio en producción.
 
-## Fase 1
+## Fase 2
 
-Esta fase solo prepara la base, el respaldo, la configuración y los scripts.
-No modifica el catálogo actual ni ejecuta migraciones definitivas.
+Esta fase implementa los modelos, el servicio, las rutas y los scripts del
+catálogo nuevo. No modifica el frontend, no implementa autenticación, panel
+administrativo, pedidos ni carrito, y no aplica cambios sobre MongoDB sin
+autorización explícita.
+
+Los tres documentos antiguos siguen disponibles y no se marcan como legacy
+hasta la Fase 3.
