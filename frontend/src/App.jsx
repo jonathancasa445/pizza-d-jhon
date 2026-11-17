@@ -1,17 +1,37 @@
-
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import MenuSection from './components/MenuSection';
+import PizzaConfigurator from './components/PizzaConfigurator';
 import { useMenu } from './hooks/useMenu';
+import {
+  getCartCount,
+  getCartItemId,
+  getCartItemLineTotalCents,
+  getCartItemQuantity,
+  getCartItemUnitPriceCents,
+  getCartTotalCents,
+} from './utils/cart';
+import { formatCents } from './utils/money';
 
 function App() {
   const [currentYear] = useState(() => new Date().getFullYear());
   const { menu, loading, error, retry } = useMenu();
+  const [selectedPizza, setSelectedPizza] = useState(null);
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('pizza-cart');
 
-      return savedCart ? JSON.parse(savedCart) : [];
+      if (!savedCart) {
+        return [];
+      }
+
+      const parsedCart = JSON.parse(savedCart);
+
+      return Array.isArray(parsedCart)
+        ? parsedCart.filter(
+            (item) => item && typeof item === 'object'
+          )
+        : [];
     } catch (error) {
       console.error('Error al recuperar el carrito:', error);
       return [];
@@ -30,44 +50,67 @@ function App() {
     localStorage.setItem('pizza-cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Se conserva sin cambios para la Fase 3B; las tarjetas nuevas no agregan al carrito.
-  // oxlint-disable-next-line no-unused-vars
-  function addToCart(product) {
+  const handleSelectProduct = useCallback((product, section) => {
+    setSelectedPizza({
+      product,
+      presentationKey: section.presentationKey,
+      sectionName: section.name,
+    });
+  }, []);
+
+  const handleCloseConfigurator = useCallback(() => {
+    setSelectedPizza(null);
+  }, []);
+
+  const handleAddPizza = useCallback((cartItem) => {
     setCart((currentCart) => {
-      const existingProduct = currentCart.find(
-        (item) => item._id === product._id
+      const existingItem = currentCart.find(
+        (item) =>
+          item.configurationKey === cartItem.configurationKey
       );
 
-      if (existingProduct) {
+      if (existingItem) {
         return currentCart.map((item) =>
-          item._id === product._id
-            ? { ...item, quantity: item.quantity + 1 }
+          item.configurationKey === cartItem.configurationKey
+            ? {
+                ...item,
+                quantity: getCartItemQuantity(item) + 1,
+              }
             : item
         );
       }
 
-      return [
-        ...currentCart,
-        { ...product, quantity: 1 },
-      ];
+      return [...currentCart, cartItem];
     });
-  }
 
-  function changeQuantity(productId, change) {
+    setSelectedPizza(null);
+  }, []);
+
+  function changeQuantity(itemId, change) {
     setCart((currentCart) =>
       currentCart
-        .map((item) =>
-          item._id === productId
-            ? { ...item, quantity: item.quantity + change }
-            : item
+        .map((item, index) => {
+          if (getCartItemId(item, index) !== itemId) {
+            return item;
+          }
+
+          return {
+            ...item,
+            quantity: getCartItemQuantity(item) + change,
+          };
+        })
+        .filter(
+          (item) =>
+            !Number.isInteger(item.quantity) || item.quantity > 0
         )
-        .filter((item) => item.quantity > 0)
     );
   }
 
-  function removeFromCart(productId) {
+  function removeFromCart(itemId) {
     setCart((currentCart) =>
-      currentCart.filter((item) => item._id !== productId)
+      currentCart.filter(
+        (item, index) => getCartItemId(item, index) !== itemId
+      )
     );
   }
 
@@ -75,15 +118,8 @@ function App() {
     setCart([]);
   }
 
-  const cartCount = cart.reduce(
-    (total, item) => total + item.quantity,
-    0
-  );
-
-  const cartTotal = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
+  const cartCount = getCartCount(cart);
+  const cartTotalCents = getCartTotalCents(cart);
 
   return (
     <div className="app">
@@ -150,6 +186,7 @@ function App() {
                         section={section}
                         products={sectionProducts}
                         defaultOpen={index === 0}
+                        onSelectProduct={handleSelectProduct}
                       />
                     );
                   })}
@@ -182,49 +219,119 @@ function App() {
             <p>Tu carrito está vacío. ¡Elige tus pizzas favoritas!</p>
           ) : (
             <div className="cart-list">
-              {cart.map((item) => (
-                <article className="cart-item" key={item._id}>
-                  <div>
-                    <h3>{item.name}</h3>
-                    <p>Precio: ${item.price.toFixed(2)}</p>
-                    <div className="quantity-controls">
+              {cart.map((item, index) => {
+                const itemId = getCartItemId(item, index);
+                const quantity = getCartItemQuantity(item);
+                const unitPriceCents =
+                  getCartItemUnitPriceCents(item);
+                const lineTotalCents =
+                  getCartItemLineTotalCents(item);
+                const flavors = Array.isArray(item.selectedFlavors)
+                  ? item.selectedFlavors
+                  : [];
+                const addons = Array.isArray(item.addons)
+                  ? item.addons
+                  : [];
+
+                return (
+                  <article
+                    className="cart-item"
+                    key={`${itemId}-${index}`}
+                  >
+                    <div className="cart-item-main">
+                      {item.imageUrl && (
+                        <img
+                          className="cart-item-image"
+                          src={item.imageUrl}
+                          alt=""
+                        />
+                      )}
+
+                      <div className="cart-item-details">
+                        <h3>{item.name || 'Producto sin nombre'}</h3>
+
+                        {item.presentationName && (
+                          <p>
+                            <strong>Presentación:</strong>{' '}
+                            {item.presentationName}
+                          </p>
+                        )}
+
+                        {flavors.length > 0 && (
+                          <p>
+                            <strong>Sabores:</strong>{' '}
+                            {flavors
+                              .map((flavor) => flavor.name)
+                              .join(' + ')}
+                          </p>
+                        )}
+
+                        {addons.length > 0 && (
+                          <p>
+                            <strong>Complementos:</strong>{' '}
+                            {addons
+                              .map(
+                                (addon) =>
+                                  `${addon.name} ×${addon.quantity}`
+                              )
+                              .join(', ')}
+                          </p>
+                        )}
+
+                        <p>
+                          Precio unitario:{' '}
+                          {formatCents(unitPriceCents)}
+                        </p>
+
+                        <div className="quantity-controls">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              changeQuantity(itemId, -1)
+                            }
+                            aria-label={`Disminuir cantidad de ${
+                              item.name || 'producto'
+                            }`}
+                          >
+                            −
+                          </button>
+
+                          <span>{quantity}</span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              changeQuantity(itemId, 1)
+                            }
+                            aria-label={`Aumentar cantidad de ${
+                              item.name || 'producto'
+                            }`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="cart-item-actions">
+                      <p className="cart-item-total">
+                        {formatCents(lineTotalCents)}
+                      </p>
+
                       <button
                         type="button"
-                        onClick={() => changeQuantity(item._id, -1)}
-                        aria-label={`Disminuir cantidad de ${item.name}`}
+                        className="remove-button"
+                        onClick={() => removeFromCart(itemId)}
                       >
-                        −
-                      </button>
-
-                      <span>{item.quantity}</span>
-
-                      <button
-                        type="button"
-                        onClick={() => changeQuantity(item._id, 1)}
-                        aria-label={`Aumentar cantidad de ${item.name}`}
-                      >
-                        +
+                        Eliminar
                       </button>
                     </div>
-                  </div>
-
-                  <p className="cart-item-total">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </p>
-
-                  <button
-                    type="button"
-                    className="remove-button"
-                    onClick={() => removeFromCart(item._id)}
-                  >
-                    Eliminar
-                  </button>
-
-                </article>
-              ))}
+                  </article>
+                );
+              })}
 
               <div className="cart-summary">
-                <h3>Total: ${cartTotal.toFixed(2)}</h3>
+                <h3>Total: {formatCents(cartTotalCents)}</h3>
               </div>
             </div>
           )}
@@ -242,6 +349,18 @@ function App() {
           Todos los derechos reservados.
         </p>
       </footer>
+
+      {selectedPizza && menu && (
+        <PizzaConfigurator
+          key={`${selectedPizza.product.key}-${selectedPizza.presentationKey}`}
+          product={selectedPizza.product}
+          presentationKey={selectedPizza.presentationKey}
+          sectionName={selectedPizza.sectionName}
+          menu={menu}
+          onClose={handleCloseConfigurator}
+          onAdd={handleAddPizza}
+        />
+      )}
     </div>
   );
 }

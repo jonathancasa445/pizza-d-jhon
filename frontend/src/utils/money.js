@@ -5,3 +5,13 @@ export function formatCents(cents) {
 
   return `$${(cents / 100).toFixed(2)}`;
 }
+
+export function dollarsToCents(amount) {
+  const numericAmount = Number(amount);
+
+  if (!Number.isFinite(numericAmount) || numericAmount < 0) {
+    return 0;
+  }
+
+  return Math.round(numericAmount * 100);
+}

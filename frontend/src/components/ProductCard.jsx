@@ -1,36 +1,30 @@
 import { formatCents } from '../utils/money';
+import { getPresentationVariant } from '../utils/pizzaConfig';
 
-function getDisplayVariant(product, presentationKey) {
-  if (presentationKey) {
-    const presentationVariant = product.variants.find(
-      (variant) =>
-        variant.key === presentationKey &&
-        variant.available !== false &&
-        Number.isInteger(variant.priceCents)
-    );
-
-    if (presentationVariant) {
-      return presentationVariant;
-    }
-  }
-
-  return (
-    product.variants.find(
-      (variant) =>
-        variant.available !== false && Number.isInteger(variant.priceCents)
-    ) ?? null
-  );
-}
-
-function ProductCard({ product, presentationKey }) {
-  const variant = getDisplayVariant(product, presentationKey);
+function ProductCard({ product, presentationKey, onSelect }) {
+  const variant = getPresentationVariant(product, presentationKey);
   const priceCents = variant ? variant.priceCents : null;
   const ingredients = Array.isArray(product.ingredients)
     ? product.ingredients
     : [];
+  const handleSelect = () => onSelect?.(product);
+
+  function handleKeyDown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleSelect();
+    }
+  }
 
   return (
-    <article className="product-card">
+    <article
+      className="product-card"
+      role="button"
+      tabIndex={0}
+      aria-label={`Personalizar ${product.name}`}
+      onClick={handleSelect}
+      onKeyDown={handleKeyDown}
+    >
       {product.imageUrl && (
         <img src={product.imageUrl} alt={product.name} />
       )}
@@ -47,9 +41,9 @@ function ProductCard({ product, presentationKey }) {
 
       <p className="product-price">{formatCents(priceCents)}</p>
 
-      <button type="button" disabled>
-        Próximamente
-      </button>
+      <span className="product-card-action" aria-hidden="true">
+        Personalizar
+      </span>
     </article>
   );
 }

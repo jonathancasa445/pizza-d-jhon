@@ -2,7 +2,12 @@ import MenuAccordion from './MenuAccordion';
 import ProductCard from './ProductCard';
 import { formatCents } from '../utils/money';
 
-function MenuSection({ section, products, defaultOpen }) {
+function MenuSection({
+  section,
+  products,
+  defaultOpen,
+  onSelectProduct,
+}) {
   const hasProducts = products.length > 0;
   const meta =
     section.startingPriceCents != null
@@ -22,6 +27,9 @@ function MenuSection({ section, products, defaultOpen }) {
               key={`${section.key}-${product.key}`}
               product={product}
               presentationKey={section.presentationKey}
+              onSelect={(selectedProduct) =>
+                onSelectProduct?.(selectedProduct, section)
+              }
             />
           ))}
         </div>
