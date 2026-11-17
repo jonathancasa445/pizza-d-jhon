@@ -1,12 +1,12 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import MenuSection from './components/MenuSection';
+import { useMenu } from './hooks/useMenu';
 
 function App() {
   const [currentYear] = useState(() => new Date().getFullYear());
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { menu, loading, error, retry } = useMenu();
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('pizza-cart');
@@ -18,34 +18,20 @@ function App() {
     }
   });
 
-  useEffect(() => {
-    async function getProducts() {
-      try {
-        const response = await fetch(
-          'http://localhost:3000/api/products'
-        );
-
-        if (!response.ok) {
-          throw new Error('No se pudieron obtener los productos.');
-        }
-
-        const data = await response.json();
-        setProducts(data);
-      } catch (error) {
-        console.error('Error al obtener productos:', error);
-        setError('No fue posible cargar el menú.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    getProducts();
-  }, []);
+  const productsByKey = useMemo(
+    () =>
+      new Map(
+        (menu?.products ?? []).map((product) => [product.key, product])
+      ),
+    [menu]
+  );
 
   useEffect(() => {
     localStorage.setItem('pizza-cart', JSON.stringify(cart));
   }, [cart]);
 
+  // Se conserva sin cambios para la Fase 3B; las tarjetas nuevas no agregan al carrito.
+  // oxlint-disable-next-line no-unused-vars
   function addToCart(product) {
     setCart((currentCart) => {
       const existingProduct = currentCart.find(
@@ -136,51 +122,46 @@ function App() {
         <section className="menu-section" id="menu">
           <h2>Nuestro menú</h2>
 
-          {loading && <p>Cargando productos...</p>}
+          {loading && <p>Cargando menú...</p>}
 
-          {error && <p>{error}</p>}
-
-          {!loading && !error && products.length === 0 && (
-            <p>Actualmente no hay productos disponibles.</p>
+          {error && (
+            <div className="menu-error">
+              <p>{error}</p>
+              <button type="button" onClick={retry}>
+                Reintentar
+              </button>
+            </div>
           )}
 
-          {!error && (
-            <div className="product-list">
-              {products.map((product) => (
-                <article
-                  className="product-card"
-                  key={product._id}
-                >
-                  {product.imageUrl && (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                    />
-                  )}
+          {!loading && !error && menu && (
+            <>
+              {menu.sections.length === 0 ? (
+                <p>Actualmente no hay secciones disponibles.</p>
+              ) : (
+                <div className="menu-sections">
+                  {menu.sections.map((section, index) => {
+                    const sectionProducts = section.productKeys
+                      .map((key) => productsByKey.get(key))
+                      .filter(Boolean);
 
-                  <h3>{product.name}</h3>
+                    return (
+                      <MenuSection
+                        key={section.key}
+                        section={section}
+                        products={sectionProducts}
+                        defaultOpen={index === 0}
+                      />
+                    );
+                  })}
+                </div>
+              )}
 
-                  <p>{product.description}</p>
-
-                  {product.ingredients.length > 0 && (
-                    <p>
-                      <strong>Ingredientes:</strong>{' '}
-                      {product.ingredients.join(', ')}
-                    </p>
-                  )}
-
-                  <p className="product-price">
-                    ${product.price.toFixed(2)}
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => addToCart(product)}>
-                    Añadir al carrito
-                  </button>
-                </article>
-              ))}
-            </div>
+              <p className="menu-service-note">
+                {menu.addons.length} adicionales disponibles. Máximo{' '}
+                {menu.limits.maxQuantityPerAddon} por adicional y{' '}
+                {menu.limits.maxAddonUnitsPerPizza} por pizza.
+              </p>
+            </>
           )}
         </section>
 

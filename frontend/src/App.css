@@ -171,7 +171,7 @@ body {
   border-radius: 10px;
 }
 
-.product-card h3 {
+.product-card h4 {
   margin: 18px 0 8px;
   color: #a52c20;
   font-size: 1.25rem;
@@ -202,8 +202,14 @@ body {
   transition: background-color 0.2s ease;
 }
 
-.product-card button:hover {
+.product-card button:not(:disabled):hover {
   background-color: #812016;
+}
+
+.product-card button:disabled {
+  background-color: #d8c3b2;
+  color: #6b554a;
+  cursor: not-allowed;
 }
 
 /* Carrito de compras */
@@ -304,4 +310,146 @@ body {
 .remove-button:hover {
   background-color: #a52c20;
   color: white;
+}
+
+/* Acordeones del catálogo */
+
+.menu-sections {
+  display: grid;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 32px auto 0;
+  text-align: left;
+}
+
+.menu-accordion {
+  overflow: hidden;
+  border: 1px solid #ead9c8;
+  border-radius: 14px;
+  background-color: #fffaf3;
+  box-shadow: 0 4px 12px rgb(53 36 29 / 8%);
+}
+
+.menu-accordion-heading {
+  margin: 0;
+}
+
+.menu-accordion-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20px;
+  padding: 20px 24px;
+  border: none;
+  background-color: transparent;
+  color: #35241d;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-accordion-trigger:hover {
+  background-color: #f8e5cf;
+}
+
+.menu-accordion-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #a52c20;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.menu-accordion-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #a52c20;
+  color: white;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.menu-accordion-panel {
+  padding: 0 24px 24px;
+}
+
+.menu-accordion-panel[hidden] {
+  display: none;
+}
+
+.menu-accordion-panel .product-list {
+  margin-top: 16px;
+}
+
+.section-description {
+  margin: 0 0 12px;
+  color: #6b554a;
+  line-height: 1.6;
+}
+
+.empty-section {
+  margin: 0;
+  padding: 12px 0 4px;
+  color: #6b554a;
+  font-weight: 600;
+}
+
+.menu-error {
+  max-width: 620px;
+  margin: 24px auto 0;
+  padding: 20px;
+  border: 1px solid #e3b8b1;
+  border-radius: 12px;
+  background-color: #fff1ee;
+  color: #812016;
+}
+
+.menu-error p {
+  margin-top: 0;
+}
+
+.menu-error button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: #a52c20;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.menu-error button:hover {
+  background-color: #812016;
+}
+
+.menu-service-note {
+  max-width: 800px;
+  margin: 28px auto 0;
+  color: #6b554a;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  .menu-accordion-trigger {
+    padding: 16px 18px;
+    font-size: 1rem;
+  }
+
+  .menu-accordion-panel {
+    padding: 0 18px 18px;
+  }
+
+  .menu-accordion-meta {
+    gap: 10px;
+    font-size: 0.85rem;
+  }
 }
