@@ -9,18 +9,25 @@ function sortByOrderThenName(a, b) {
   return String(a?.name ?? '').localeCompare(String(b?.name ?? ''));
 }
 
-export function getPresentationVariant(product, presentationKey) {
+export function getSelectableVariants(product) {
   if (!product || !Array.isArray(product.variants)) {
-    return null;
+    return [];
   }
 
-  const availableVariants = product.variants.filter(
-    (variant) =>
-      variant &&
-      variant.available !== false &&
-      Number.isInteger(variant.priceCents) &&
-      variant.priceCents >= 0
-  );
+  return product.variants
+    .filter(
+      (variant) =>
+        variant &&
+        variant.available !== false &&
+        Number.isInteger(variant.priceCents) &&
+        variant.priceCents >= 0
+    )
+    .slice()
+    .sort(sortByOrderThenName);
+}
+
+export function getPresentationVariant(product, presentationKey) {
+  const availableVariants = getSelectableVariants(product);
 
   if (presentationKey) {
     return (
@@ -30,6 +37,33 @@ export function getPresentationVariant(product, presentationKey) {
   }
 
   return availableVariants[0] ?? null;
+}
+
+export function resolveConfiguredVariant({
+  product,
+  presentationKey,
+  selectedVariantKeys = [],
+} = {}) {
+  const selectableVariants = getSelectableVariants(product);
+  const needsSelection =
+    Boolean(product) &&
+    product.kind === 'simple' &&
+    selectableVariants.length > 1;
+
+  if (needsSelection) {
+    const selectedKey = Array.isArray(selectedVariantKeys)
+      ? selectedVariantKeys[0]
+      : null;
+    const variant = selectedKey
+      ? selectableVariants.find((item) => item.key === selectedKey) ?? null
+      : null;
+
+    return { variant, needsSelection, selectableVariants, isValid: Boolean(variant) };
+  }
+
+  const variant = getPresentationVariant(product, presentationKey);
+
+  return { variant, needsSelection, selectableVariants, isValid: Boolean(variant) };
 }
 
 export function getAvailableAddons(product, addons) {
@@ -183,6 +217,11 @@ export function buildCartItem({
   addons = [],
   addonQuantities = {},
 }) {
+  const effectivePresentationKey =
+    typeof presentationKey === 'string' && presentationKey
+      ? presentationKey
+      : variant?.key ?? '';
+
   const selectedAddons = addons
     .map((addon) => ({
       key: addon.key,
@@ -208,7 +247,7 @@ export function buildCartItem({
   }));
   const configurationKey = createConfigurationKey({
     productKey: product.key,
-    presentationKey,
+    presentationKey: effectivePresentationKey,
     selectedFlavors: flavorSnapshots,
     selectedAddons,
   });
@@ -219,8 +258,8 @@ export function buildCartItem({
     productKey: product.key,
     name: product.name,
     imageUrl: product.imageUrl || '',
-    presentationKey,
-    presentationName: variant?.name || presentationKey || '',
+    presentationKey: effectivePresentationKey,
+    presentationName: variant?.name || effectivePresentationKey || '',
     basePriceCents,
     selectedFlavors: flavorSnapshots,
     addons: selectedAddons,

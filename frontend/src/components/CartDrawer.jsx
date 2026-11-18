@@ -515,7 +515,7 @@ function CartDrawer({
                 Tu carrito está vacío.
               </p>
               <p>
-                Elige tus pizzas favoritas y vuelve cuando quieras.
+                Elige tus productos favoritos y vuelve cuando quieras.
               </p>
               <button
                 type="button"

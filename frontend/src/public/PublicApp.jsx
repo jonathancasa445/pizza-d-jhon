@@ -234,7 +234,7 @@ function PublicApp() {
               <p className="menu-service-note">
                 {menu.addons.length} adicionales disponibles. Máximo{' '}
                 {menu.limits.maxQuantityPerAddon} por adicional y{' '}
-                {menu.limits.maxAddonUnitsPerPizza} por pizza.
+                {menu.limits.maxAddonUnitsPerPizza} por producto.
               </p>
             </>
           )}
@@ -250,7 +250,7 @@ function PublicApp() {
           )}
 
           {cart.length === 0 ? (
-            <p>Tu carrito está vacío. ¡Elige tus pizzas favoritas!</p>
+            <p>Tu carrito está vacío. ¡Elige tus productos favoritos!</p>
           ) : (
             <div className="cart-list">
               {cart.map((item, index) => (

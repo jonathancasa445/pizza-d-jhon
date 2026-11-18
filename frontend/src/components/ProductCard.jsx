@@ -7,6 +7,11 @@ function ProductCard({ product, presentationKey, onSelect }) {
   const ingredients = Array.isArray(product.ingredients)
     ? product.ingredients
     : [];
+  const hasMultipleVariants =
+    product.kind === 'simple' &&
+    Array.isArray(product.variants) &&
+    product.variants.length > 1;
+  const actionLabel = hasMultipleVariants ? 'Elegir opción' : 'Personalizar';
   const handleSelect = () => onSelect?.(product);
 
   function handleKeyDown(event) {
@@ -21,7 +26,7 @@ function ProductCard({ product, presentationKey, onSelect }) {
       className="product-card"
       role="button"
       tabIndex={0}
-      aria-label={`Personalizar ${product.name}`}
+      aria-label={`${actionLabel} ${product.name}`}
       onClick={handleSelect}
       onKeyDown={handleKeyDown}
     >
@@ -42,7 +47,7 @@ function ProductCard({ product, presentationKey, onSelect }) {
       <p className="product-price">{formatCents(priceCents)}</p>
 
       <span className="product-card-action" aria-hidden="true">
-        Personalizar
+        {actionLabel}
       </span>
     </article>
   );

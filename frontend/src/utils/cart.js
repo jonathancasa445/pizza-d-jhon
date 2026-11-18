@@ -1,4 +1,4 @@
-import { dollarsToCents } from './money';
+import { dollarsToCents } from './money.js';
 
 export function getCartItemId(item, index = 0) {
   if (item && typeof item === 'object') {

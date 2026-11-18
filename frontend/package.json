@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test src/router.test.js src/utils/adminOrders.test.js src/services/adminApi.test.js",
+    "test": "node --test src/router.test.js src/utils/adminOrders.test.js src/services/adminApi.test.js src/utils/productCart.test.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

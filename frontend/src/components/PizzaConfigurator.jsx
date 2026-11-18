@@ -9,7 +9,7 @@ import {
   getMaxAddonUnits,
   getMaxQuantityPerAddon,
   getMixFlavorOptions,
-  getPresentationVariant,
+  resolveConfiguredVariant,
 } from '../utils/pizzaConfig';
 
 function PizzaConfigurator({
@@ -24,25 +24,37 @@ function PizzaConfigurator({
   const [addonQuantities, setAddonQuantities] = useState({});
   const closeButtonRef = useRef(null);
 
-  const variant = getPresentationVariant(product, presentationKey);
+  const isMix = product.isMix === true;
+  const selection = useMemo(
+    () =>
+      resolveConfiguredVariant({
+        product,
+        presentationKey,
+        selectedVariantKeys: selectedFlavorKeys,
+      }),
+    [product, presentationKey, selectedFlavorKeys]
+  );
+  const variant = selection.variant;
+  const needsVariantSelection = selection.needsSelection;
   const availableAddons = useMemo(
     () => getAvailableAddons(product, menu?.addons ?? []),
     [product, menu]
   );
   const flavorOptions = useMemo(
     () =>
-      product.isMix
+      isMix
         ? getMixFlavorOptions(product, menu?.products ?? [])
-        : [],
-    [product, menu]
+        : needsVariantSelection
+          ? selection.selectableVariants
+          : [],
+    [isMix, product, menu, needsVariantSelection, selection.selectableVariants]
   );
-  const requiredFlavorCount = product.mixConfig?.flavorCount ?? 2;
+  const requiredFlavorCount = isMix ? (product.mixConfig?.flavorCount ?? 2) : 1;
   const selectedFlavors = selectedFlavorKeys
     .map((flavorKey) =>
       flavorOptions.find((flavor) => flavor.key === flavorKey)
     )
     .filter(Boolean);
-  const isMix = product.isMix === true;
   const hasValidFlavors =
     !isMix ||
     (selectedFlavors.length === requiredFlavorCount &&
@@ -61,7 +73,7 @@ function PizzaConfigurator({
   const defaultAddonMaxQuantity = defaultAddon
     ? getMaxQuantityPerAddon(defaultAddon, menu?.limits)
     : 0;
-  const canAdd = Boolean(variant) && hasValidFlavors;
+  const canAdd = selection.isValid && hasValidFlavors;
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -136,7 +148,7 @@ function PizzaConfigurator({
     const cartItem = buildCartItem({
       product,
       variant,
-      presentationKey,
+      presentationKey: variant?.key ?? presentationKey,
       selectedFlavors,
       addons: availableAddons,
       addonQuantities,
@@ -163,7 +175,7 @@ function PizzaConfigurator({
         <div className="configurator-header">
           <div>
             <p className="configurator-eyebrow">
-              {sectionName || 'Personaliza tu pizza'}
+              {sectionName || 'Personaliza tu producto'}
             </p>
             <h2 id="pizza-configurator-title">{product.name}</h2>
           </div>
@@ -188,8 +200,13 @@ function PizzaConfigurator({
             <div>
               <p>{product.description}</p>
               <p>
-                <strong>Presentación:</strong>{' '}
-                {variant?.name || 'No disponible'}
+                <strong>
+                  {needsVariantSelection ? 'Opción:' : 'Presentación:'}
+                </strong>{' '}
+                {variant?.name ||
+                  (needsVariantSelection
+                    ? 'Sin seleccionar'
+                    : 'No disponible')}
               </p>
               <p>
                 <strong>Precio base:</strong>{' '}
@@ -205,15 +222,18 @@ function PizzaConfigurator({
             </div>
           </div>
 
-          {isMix && (
+          {(isMix || needsVariantSelection) && (
             <section
               className="configurator-block"
               aria-labelledby="mix-flavors-title"
             >
-              <h3 id="mix-flavors-title">Elige los dos sabores</h3>
+              <h3 id="mix-flavors-title">
+                {isMix ? 'Elige los dos sabores' : 'Elige una opción'}
+              </h3>
               <p className="configurator-hint">
-                Selecciona exactamente dos sabores diferentes. La Mixta
-                no puede repetirse ni elegirse como sabor.
+                {isMix
+                  ? 'Selecciona exactamente dos sabores diferentes. La Mixta no puede repetirse ni elegirse como sabor.'
+                  : 'Selecciona una sola opción. No se pueden combinar.'}
               </p>
 
               <div className="flavor-options">
@@ -241,7 +261,9 @@ function PizzaConfigurator({
 
                       {isSelected && (
                         <span className="flavor-badge">
-                          Sabor {selectedIndex + 1}
+                          {isMix
+                            ? `Sabor ${selectedIndex + 1}`
+                            : 'Seleccionado'}
                         </span>
                       )}
                     </button>
@@ -251,13 +273,17 @@ function PizzaConfigurator({
 
               <p
                 className={`mix-summary${
-                  hasValidFlavors ? ' is-complete' : ''
+                  isMix ? (hasValidFlavors ? ' is-complete' : '') : variant ? ' is-complete' : ''
                 }`}
                 aria-live="polite"
               >
-                {hasValidFlavors
-                  ? `50% ${selectedFlavors[0].name} + 50% ${selectedFlavors[1].name}`
-                  : `Sabores seleccionados: ${selectedFlavors.length}/${requiredFlavorCount}.`}
+                {isMix
+                  ? hasValidFlavors
+                    ? `50% ${selectedFlavors[0].name} + 50% ${selectedFlavors[1].name}`
+                    : `Sabores seleccionados: ${selectedFlavors.length}/${requiredFlavorCount}.`
+                  : variant
+                    ? `Opción seleccionada: ${variant.name}`
+                    : 'Selecciona una opción para continuar.'}
               </p>
             </section>
           )}
@@ -278,7 +304,7 @@ function PizzaConfigurator({
                 Cada complemento cuesta{' '}
                 {formatCents(defaultAddonPriceCents)}. Máximo{' '}
                 {defaultAddonMaxQuantity} por complemento y{' '}
-                {maxAddonUnits} en total por pizza.
+                {maxAddonUnits} en total por producto.
               </p>
             )}
 
@@ -352,7 +378,9 @@ function PizzaConfigurator({
           {!canAdd && (
             <p className="configurator-warning">
               {!variant
-                ? 'Esta presentación no está disponible.'
+                ? needsVariantSelection
+                  ? 'Selecciona una opción para continuar.'
+                  : 'Esta presentación no está disponible.'
                 : 'Selecciona exactamente dos sabores diferentes para continuar.'}
             </p>
           )}
@@ -360,7 +388,7 @@ function PizzaConfigurator({
 
         <div className="configurator-footer">
           <div className="configurator-total" aria-live="polite">
-            <span>Precio final por pizza</span>
+            <span>Precio final</span>
             <strong>{formatCents(finalUnitPriceCents)}</strong>
             <small>
               {formatCents(basePriceCents)} base +{' '}
