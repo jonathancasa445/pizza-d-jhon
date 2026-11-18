@@ -12,8 +12,16 @@ const {
   authenticate,
   resolveAuthenticatedAdmin,
 } = require('./services/adminAuthService');
+const {
+  listOrders,
+  getOrderDetail,
+  getOrderStats,
+} = require('./services/adminOrderService');
+const { changeOrderStatus } = require('./services/orderStatusService');
 const { createAdminAuthController } = require('./controllers/adminAuthController');
 const { createAdminAuthRoutes } = require('./routes/adminAuthRoutes');
+const { createAdminOrderController } = require('./controllers/adminOrderController');
+const { createAdminOrderRoutes } = require('./routes/adminOrderRoutes');
 const connectDB = require('./database');
 const productRoutes = require('./routes/productRoutes');
 const menuRoutes = require('./routes/menuRoutes');
@@ -49,6 +57,13 @@ const adminAuthController = createAdminAuthController({
   csrf,
 });
 
+const adminOrderController = createAdminOrderController({
+  listOrders,
+  getOrderDetail,
+  getOrderStats,
+  changeOrderStatus,
+});
+
 const app = express();
 const PORT = env.PORT;
 
@@ -81,6 +96,16 @@ app.use(
     csrf,
     requireAuth,
     loginLimiter,
+  })
+);
+
+// API administrativa de pedidos (protegida por requireAuth y CSRF en PATCH).
+app.use(
+  '/api/admin',
+  createAdminOrderRoutes({
+    controller: adminOrderController,
+    requireAuth,
+    csrf,
   })
 );
 

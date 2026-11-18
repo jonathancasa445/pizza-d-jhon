@@ -422,3 +422,34 @@ administrativas:
 `autoIndex` sigue en `false`. Antes de ejecutar
 `npm run db:order-indexes -- --apply` hacer el dry-run correspondiente y
 obtener autorización expresa. No se realizan migraciones de documentos.
+
+## API administrativa de pedidos (Etapa 4)
+
+Todas las rutas requieren la cookie de sesión de la Etapa 2 (`requireAuth`).
+El `PATCH` también exige el token CSRF de doble envío (`X-CSRF-Token`).
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/admin/orders?status=&page=&limit=` | Listado paginado y filtrable (20 por defecto, máx. 100). |
+| GET | `/api/admin/orders/stats` | `total`, `byStatus` (incluye `unclassified` si corresponde) y `accepted`. |
+| GET | `/api/admin/orders/:id` | Detalle del pedido con su historial. |
+| PATCH | `/api/admin/orders/:id/status` | Cambio de estado; cuerpo estricto `{ status, reason? }`. |
+
+El cuerpo del `PATCH` solo acepta `status` y `reason`; cualquier otro campo
+(incluido `adminId`, `changedBy`, `items`, `totalCents` o `idempotencyKey`)
+se rechaza con `400 INVALID_BODY`. El `adminId` se toma exclusivamente de
+`req.admin`, nunca del cliente. Las validaciones de estado, motivo y
+concurrencia se delegan a `orderStatusService`.
+
+Códigos de error: `400` solicitud incorrecta (incluye identificadores con
+formato de ObjectId inválido), `401` sin sesión, `403` CSRF inválido, `404`
+pedido inexistente (identificador válido), `409` conflicto de estado y `500`
+para errores inesperados sin detalles internos.
+
+Las respuestas de esta API incluyen `Cache-Control: no-store`. Las rutas
+públicas y de autenticación no se ven afectadas.
+
+**Alcance de permisos:** conforme a la decisión aprobada, todos los
+administradores autenticados tienen las mismas facultades de consulta y
+gestión de pedidos. No existen roles ni restricciones por administrador en
+esta fase.
