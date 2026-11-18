@@ -1,4 +1,8 @@
-const ORDERS_URL = 'http://localhost:3000/api/orders';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(
+  /\/$/,
+  ''
+);
+const ORDERS_URL = `${API_BASE_URL}/api/orders`;
 
 function createRequestError(message, { status, code } = {}) {
   const error = new Error(message);

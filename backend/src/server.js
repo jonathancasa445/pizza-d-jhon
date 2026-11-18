@@ -1,22 +1,29 @@
-require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
+const env = require('./config/env');
+const { createSecurityConfig } = require('./config/security');
+const { createSecurityHeaders } = require('./middleware/securityHeaders');
 const connectDB = require('./database');
 const productRoutes = require('./routes/productRoutes');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const security = createSecurityConfig({
+  nodeEnv: env.NODE_ENV,
+  jwtExpiresIn: env.JWT_EXPIRES_IN,
+});
 
-app.use(
-  cors({
-    origin: ['http://localhost:5173', 'http://localhost:5177'],
-  })
-);
+const app = express();
+const PORT = env.PORT;
+
+app.set('trust proxy', security.trustProxy);
+
+app.use(cors({ origin: env.CLIENT_ORIGINS, credentials: true }));
+app.use(createSecurityHeaders(security.securityHeaders));
 app.use(express.json());
+app.use(cookieParser());
 
 // Ruta principal.
 app.get('/', (req, res) => {

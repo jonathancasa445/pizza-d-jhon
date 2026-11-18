@@ -1,0 +1,19 @@
+# Configuración de Netlify para el frontend de Pizza D' Jhon.
+#
+# Proxy de API hacia Render:
+# La URL real del servicio Render NO está documentada en el proyecto, por lo
+# que no se ha inventado ningún dominio. Antes de desplegar, sustituye el
+# marcador por la URL real y descomenta el bloque. Debe ir ANTES del rewrite
+# catch-all para que Netlify no capture /api/* como SPA.
+#
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://<URL-REAL-DEL-BACKEND-RENDER>/api/:splat"
+#   status = 200
+#   force = true
+
+# Reenvío de rutas SPA (necesario para /admin en etapas posteriores).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

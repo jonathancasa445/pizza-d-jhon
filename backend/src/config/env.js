@@ -40,12 +40,20 @@ const MONGODB_URI = readEnv('MONGODB_URI', { required: true });
 const PORT = parsePort(readEnv('PORT', { fallback: '3000' }));
 const NODE_ENV = readEnv('NODE_ENV', { fallback: 'development' });
 const CLIENT_ORIGINS = parseOrigins(
-  readEnv('CLIENT_ORIGINS', { fallback: 'http://localhost:5173' })
+  readEnv('CLIENT_ORIGINS', {
+    fallback: 'http://localhost:5173,http://localhost:5177',
+  })
 );
+const JWT_SECRET = readEnv('JWT_SECRET', {
+  required: NODE_ENV === 'production',
+});
+const JWT_EXPIRES_IN = readEnv('JWT_EXPIRES_IN', { fallback: '8h' });
 
 module.exports = {
   MONGODB_URI,
   PORT,
   NODE_ENV,
   CLIENT_ORIGINS,
+  JWT_SECRET,
+  JWT_EXPIRES_IN,
 };

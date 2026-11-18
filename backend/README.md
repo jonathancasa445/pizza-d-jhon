@@ -40,9 +40,13 @@ El backend lee `backend/.env`. Las variables previstas son:
 | `MONGODB_URI` | Cadena de conexión a MongoDB Atlas | Actual |
 | `PORT` | Puerto del servidor | Actual |
 | `NODE_ENV` | `development` o `production` | Actual |
-| `CLIENT_ORIGINS` | Orígenes permitidos, separados por coma | Preparación |
-| `JWT_SECRET` | Firma de tokens administrativos | Fase 5 |
-| `JWT_EXPIRES_IN` | Duración de la sesión administrativa | Fase 5 |
+| `CLIENT_ORIGINS` | Orígenes exactos permitidos en CORS, separados por coma; el servidor ya lo utiliza | Actual |
+| `JWT_SECRET` | Firma de tokens administrativos (obligatorio en producción) | Fase 5 |
+| `JWT_EXPIRES_IN` | Duración de la sesión administrativa (`8h` por defecto) | Fase 5 |
+
+El valor por defecto de `CLIENT_ORIGINS` incluye `http://localhost:5173` y
+`http://localhost:5177`. No se deben incluir valores reales en `.env.example`,
+en Git ni en la documentación.
 
 No se deben incluir valores reales en `.env.example`, en Git ni en la
 documentación. El archivo `.env` está ignorado por Git.
@@ -301,19 +305,41 @@ Los precios nuevos se preparan como centavos enteros:
 El servidor será la fuente de verdad al crear pedidos en una etapa
 posterior.
 
-## Seguridad prevista para Netlify + Render
+## Seguridad para Netlify + Render
 
-La autenticación administrativa se implementará en la Fase 5. El diseño
-debe contemplar dominios distintos:
+En la Etapa 0 de la Fase 5 ya quedó preparada la infraestructura de
+seguridad. Las rutas de autenticación y el panel se implementarán en etapas
+posteriores.
 
-- CORS con orígenes exactos desde `CLIENT_ORIGINS`.
-- `credentials: true` en CORS y `credentials: 'include'` en el frontend.
-- Cookie `HttpOnly`, `Secure`, `SameSite=None` y `Path=/`.
-- Protección CSRF con token de doble envío y cabecera `X-CSRF-Token`.
-- `app.set('trust proxy', 1)` para Render.
-- Rate limiting en login y rutas administrativas.
-- `JWT_SECRET` estable en el entorno de Render.
-- HTTPS obligatorio en producción.
+- CORS usa orígenes exactos desde `CLIENT_ORIGINS` con `credentials: true`.
+- Se monta `cookie-parser`, cabeceras de seguridad básicas y
+  `app.set('trust proxy', 1)` solo en producción.
+- Cookies previstas: `HttpOnly`, `Secure` en producción, `SameSite=Lax` y
+  `Path=/`, **sin atributo `Domain`**. En desarrollo no se usa `Secure` para
+  que funcionen sobre `http://localhost`.
+- Se previó la sustitución de `SameSite=None` por `SameSite=Lax` gracias al
+  proxy de API de Netlify: el navegador ve un único origen, por lo que no
+  dependemos de cookies de terceros (bloqueadas por Chrome/Safari).
+- CSRF de doble envío preparado en `middleware/csrf.js` (cookie legible +
+  cabecera `X-CSRF-Token`, comparación en tiempo constante). Se aplicará a
+  las rutas que muten estado en la Etapa 4.
+- Limitador de tasa en memoria preparado en `middleware/rateLimit.js` para
+  login y logout (5 intentos / 15 min). **Se asume una sola instancia de
+  Render**; con varias instancias haría falta un almacén compartido.
+- `JWT_SECRET` debe ser estable y definirse en Render; HTTPS obligatorio.
+
+### Proxy de API en Netlify
+
+`frontend/netlify.toml` contiene el rewrite SPA y un bloque de proxy
+`/api/*` preparado. La URL real del backend Render **no está documentada en
+este repositorio**, por lo que no se inventó ningún dominio: completa el
+marcador antes de desplegar y descomenta el bloque, que debe permanecer
+antes del rewrite catch-all.
+
+En desarrollo, `frontend/vite.config.js` redirige `/api/*` a
+`http://localhost:3000`, por lo que `ordersApi.js` usa rutas relativas
+configurables mediante `VITE_API_BASE_URL`. `menuApi.js` conserva su URL
+absoluta y sigue funcionando mediante CORS.
 
 ## Fase 2
 
