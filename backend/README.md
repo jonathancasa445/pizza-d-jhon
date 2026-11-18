@@ -43,13 +43,33 @@ El backend lee `backend/.env`. Las variables previstas son:
 | `CLIENT_ORIGINS` | Orígenes exactos permitidos en CORS, separados por coma; el servidor ya lo utiliza | Actual |
 | `JWT_SECRET` | Firma de tokens administrativos (obligatorio en producción) | Fase 5 |
 | `JWT_EXPIRES_IN` | Duración de la sesión administrativa (`8h` por defecto) | Fase 5 |
+| `ADMIN_PASSWORD` | Contraseña del administrador al usar el CLI (opcional; si no se define se solicita por terminal) | Fase 5 |
 
 El valor por defecto de `CLIENT_ORIGINS` incluye `http://localhost:5173` y
 `http://localhost:5177`. No se deben incluir valores reales en `.env.example`,
-en Git ni en la documentación.
+en Git ni en la documentación. El archivo `.env` está ignorado por Git.
 
-No se deben incluir valores reales en `.env.example`, en Git ni en la
-documentación. El archivo `.env` está ignorado por Git.
+## Creación del administrador (CLI)
+
+El primer administrador se registra únicamente desde la línea de comandos.
+No existe formulario ni endpoint público de registro.
+
+```bash
+npm run admin:create -- --username admin
+# o, en entornos no interactivos:
+ADMIN_PASSWORD='contraseña-segura' npm run admin:create -- --username admin
+```
+
+- El usuario se normaliza a minúsculas y debe tener 3–32 caracteres
+  (`a-z`, `0-9`, `.`, `_`, `-`).
+- La contraseña se valida (8–200 caracteres) y se almacena solo como
+  `salt` + `hash` generados con `scrypt` nativo de Node.js. Nunca se guarda
+  en claro ni se imprime en consola.
+- Si no se define `ADMIN_PASSWORD`, se solicita por terminal **sin eco**.
+- No hay credenciales predeterminadas. Un usuario duplicado se rechaza;
+  `--force` permite actualizar sus credenciales de forma explícita.
+- El índice único `username:1` se creará solo tras dry-run y autorización:
+  `npm run db:admin-indexes` / `npm run db:admin-indexes -- --apply`.
 
 ## Inspección de la base de datos
 
