@@ -1401,26 +1401,46 @@ body {
   box-shadow: 0 2px 8px rgb(53 36 29 / 25%);
 }
 
-.navigation a {
-  position: relative;
+.navigation {
+  align-items: center;
+  gap: 10px;
 }
 
-.navigation a:not(.cart-link)::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -4px;
-  left: 0;
-  height: 2px;
-  border-radius: 2px;
+.navigation a,
+.navigation .cart-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background-color: #a52c20;
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.2s ease;
+  color: #fffaf3;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
-.navigation a:not(.cart-link):hover::after {
-  transform: scaleX(1);
+.navigation a:hover,
+.navigation .cart-link:hover {
+  background-color: #812016;
+  color: #fffaf3;
+  box-shadow: 0 4px 12px rgb(165 44 32 / 25%);
+  transform: translateY(-1px);
+}
+
+.navigation a:focus-visible,
+.navigation .cart-link:focus-visible {
+  outline: 3px solid #ffcf9b;
+  outline-offset: 2px;
+  border-color: #ffcf9b;
 }
 
 .hero {
@@ -1787,6 +1807,17 @@ body {
   .brand-logo {
     width: 36px;
     height: 36px;
+  }
+
+  .navigation {
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .navigation a,
+  .navigation .cart-link {
+    padding: 7px 12px;
+    font-size: 0.85rem;
   }
 
   .hero {
