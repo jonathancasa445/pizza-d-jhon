@@ -2,8 +2,8 @@ import {
   getCartItemLineTotalCents,
   getCartItemQuantity,
   getCartTotalCents,
-} from './cart';
-import { formatCents } from './money';
+} from './cart.js';
+import { formatCents } from './money.js';
 
 const MODALITY_LABELS = {
   delivery: 'Domicilio',

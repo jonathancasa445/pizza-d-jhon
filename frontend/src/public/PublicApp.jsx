@@ -9,12 +9,25 @@ import {
   getCartItemQuantity,
 } from '../utils/cart';
 import { navigate } from '../router';
+import {
+  buildContactWhatsAppUrl,
+  MESSAGE_TYPES,
+  validateContactForm,
+} from '../utils/contactMessage';
 
 function PublicApp() {
   const [currentYear] = useState(() => new Date().getFullYear());
   const { menu, loading, error, retry } = useMenu();
   const [selectedPizza, setSelectedPizza] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    messageType: '',
+    message: '',
+  });
+  const [contactErrors, setContactErrors] = useState({});
+  const [contactNotice, setContactNotice] = useState('');
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('pizza-cart');
@@ -92,6 +105,41 @@ function PublicApp() {
       });
     }, 0);
   }, []);
+
+  const handleContactChange = useCallback((event) => {
+    const { name, value } = event.target;
+
+    setContactForm((current) => ({ ...current, [name]: value }));
+    setContactErrors((current) => ({ ...current, [name]: '' }));
+    setContactNotice('');
+  }, []);
+
+  const handleContactSubmit = useCallback(
+    (event) => {
+      event.preventDefault();
+
+      const errors = validateContactForm(contactForm);
+      setContactErrors(errors);
+
+      if (Object.keys(errors).length > 0) {
+        setContactNotice('');
+        return;
+      }
+
+      const url = buildContactWhatsAppUrl(contactForm);
+
+      if (!url) {
+        setContactNotice('No se pudo preparar WhatsApp. Inténtalo de nuevo.');
+        return;
+      }
+
+      setContactNotice(
+        'Se abrirá WhatsApp para que confirmes y envíes tu mensaje.'
+      );
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    [contactForm]
+  );
 
   const handleAddPizza = useCallback((cartItem) => {
     setCart((currentCart) => {
@@ -282,6 +330,116 @@ function PublicApp() {
           <p className="story-eyebrow">¿Un antojo?</p>
           <h2>Estamos aquí para atenderte</h2>
           <p>Haz tu pedido y lo llevamos hasta donde estés.</p>
+
+          <p className="contact-intro">
+            ¿Tienes una consulta, sugerencia o comentario? Escríbenos y
+            continuamos la conversación por WhatsApp.
+          </p>
+
+          <form
+            className="contact-form"
+            onSubmit={handleContactSubmit}
+            noValidate
+          >
+            <div className="contact-form-row">
+              <div className="contact-field">
+                <label htmlFor="contact-name">Nombre</label>
+                <input
+                  id="contact-name"
+                  name="name"
+                  type="text"
+                  value={contactForm.name}
+                  onChange={handleContactChange}
+                  placeholder="Tu nombre"
+                  className={
+                    contactErrors.name ? 'contact-input-error' : undefined
+                  }
+                />
+                {contactErrors.name && (
+                  <p className="contact-error" role="alert">
+                    {contactErrors.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="contact-field">
+                <label htmlFor="contact-email">
+                  Correo electrónico (opcional)
+                </label>
+                <input
+                  id="contact-email"
+                  name="email"
+                  type="email"
+                  value={contactForm.email}
+                  onChange={handleContactChange}
+                  placeholder="tucorreo@ejemplo.com"
+                  className={
+                    contactErrors.email ? 'contact-input-error' : undefined
+                  }
+                />
+                {contactErrors.email && (
+                  <p className="contact-error" role="alert">
+                    {contactErrors.email}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="contact-field">
+              <label htmlFor="contact-type">Tipo de mensaje</label>
+              <select
+                id="contact-type"
+                name="messageType"
+                value={contactForm.messageType}
+                onChange={handleContactChange}
+                className={
+                  contactErrors.messageType ? 'contact-input-error' : undefined
+                }
+              >
+                <option value="">Selecciona una opción</option>
+                {MESSAGE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+              {contactErrors.messageType && (
+                <p className="contact-error" role="alert">
+                  {contactErrors.messageType}
+                </p>
+              )}
+            </div>
+
+            <div className="contact-field">
+              <label htmlFor="contact-message">Mensaje</label>
+              <textarea
+                id="contact-message"
+                name="message"
+                rows={4}
+                value={contactForm.message}
+                onChange={handleContactChange}
+                placeholder="Cuéntanos en qué podemos ayudarte..."
+                className={
+                  contactErrors.message ? 'contact-input-error' : undefined
+                }
+              />
+              {contactErrors.message && (
+                <p className="contact-error" role="alert">
+                  {contactErrors.message}
+                </p>
+              )}
+            </div>
+
+            {contactNotice && (
+              <p className="contact-notice" role="status">
+                {contactNotice}
+              </p>
+            )}
+
+            <button type="submit" className="primary-button contact-submit">
+              Enviar por WhatsApp
+            </button>
+          </form>
         </section>
       </main>
 
