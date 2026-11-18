@@ -10,8 +10,10 @@ const {
   MAX_ADDRESS_LENGTH,
   MAX_REFERENCE_LENGTH,
   MAX_OBSERVATIONS_LENGTH,
+  MAX_STATUS_REASON_LENGTH,
   UUID_V4_PATTERN,
   SHA256_PATTERN,
+  buildInitialStatusHistoryEntry,
 } = require('../constants/order');
 
 function isNonNegativeInteger(value) {
@@ -176,6 +178,42 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const orderStatusHistorySchema = new mongoose.Schema(
+  {
+    previousStatus: {
+      type: String,
+      enum: ORDER_STATUSES,
+      default: null,
+    },
+
+    newStatus: {
+      type: String,
+      enum: ORDER_STATUSES,
+      required: true,
+    },
+
+    changedBy: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    changedAt: {
+      type: Date,
+      required: true,
+      default: () => new Date(),
+    },
+
+    reason: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: MAX_STATUS_REASON_LENGTH,
+    },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     idempotencyKey: {
@@ -259,6 +297,11 @@ const orderSchema = new mongoose.Schema(
       enum: ORDER_STATUSES,
       default: 'pending',
     },
+
+    statusHistory: {
+      type: [orderStatusHistorySchema],
+      default: [],
+    },
   },
   {
     timestamps: true,
@@ -268,6 +311,11 @@ const orderSchema = new mongoose.Schema(
 );
 
 orderSchema.index({ idempotencyKey: 1 }, { unique: true });
+
+// Propuestas para consultas administrativas (requieren autorización y
+// dry-run antes de ejecutarse; autoIndex sigue desactivado).
+orderSchema.index({ status: 1, createdAt: 1 });
+orderSchema.index({ createdAt: 1 });
 
 orderSchema.pre('validate', function validateOrder() {
   if (!Array.isArray(this.items) || this.items.length === 0) {
@@ -295,6 +343,15 @@ orderSchema.pre('validate', function validateOrder() {
       'totalCents',
       'El total debe coincidir con el subtotal en esta fase.'
     );
+  }
+
+  // Los pedidos nuevos nacen con la entrada inicial del historial.
+  // Los documentos antiguos sin historial no se modifican.
+  if (
+    this.isNew &&
+    (!Array.isArray(this.statusHistory) || this.statusHistory.length === 0)
+  ) {
+    this.statusHistory = [buildInitialStatusHistoryEntry()];
   }
 });
 

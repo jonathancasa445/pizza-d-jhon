@@ -385,3 +385,40 @@ autorización explícita.
 
 Los tres documentos antiguos siguen disponibles y no se marcan como legacy
 hasta la Fase 3.
+
+## Gestión administrativa de pedidos (Etapa 3)
+
+La Etapa 3 agregó la lógica de negocio, sin endpoints ni frontend:
+
+- `constants/order.js`: seis estados (`pending`, `confirmed`, `preparing`,
+  `on_the_way`, `delivered`, `cancelled`), flujo normal, estados terminales y
+  reglas de motivo obligatorio (máx. 300 caracteres).
+- `models/Order.js`: campo `statusHistory` acumulativo y entrada inicial
+  `{ previousStatus: null, newStatus: 'pending', changedBy: 'system',
+  changedAt, reason: '' }` en pedidos nuevos. Los pedidos antiguos sin
+  historial siguen funcionando.
+- `services/orderStatusService.js`: validación de transiciones, correcciones
+  retrospectivas con motivo y actualización atómica (`$set` + `$push`). El
+  motivo se normaliza con `trim()` y el límite de 300 caracteres se aplica
+  al texto normalizado.
+- `services/adminOrderService.js`: listado paginado (20 por defecto, máx. 100,
+  orden `-createdAt`, filtro por estado), detalle y estadísticas.
+- `services/orderAdminSerializer.js`: serialización administrativa sin
+  `idempotencyKey`, `requestHash`, secretos ni datos de autenticación.
+
+Las estadísticas separan `total`, `byStatus` y `accepted` (suma de
+`confirmed`, `preparing`, `on_the_way` y `delivered`). `pending` y `cancelled`
+**no** cuentan como aceptados; el término «ventas» no se utiliza.
+
+### Índices propuestos (sin aplicar)
+
+El esquema declara, pero **no aplica**, estos índices para las consultas
+administrativas:
+
+- `{ status: 1, createdAt: 1 }` → listados filtrados por estado y ordenados
+  por fecha.
+- `{ createdAt: 1 }` → listado sin filtro ordenado por fecha.
+
+`autoIndex` sigue en `false`. Antes de ejecutar
+`npm run db:order-indexes -- --apply` hacer el dry-run correspondiente y
+obtener autorización expresa. No se realizan migraciones de documentos.
