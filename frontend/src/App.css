@@ -1268,6 +1268,82 @@ body {
   line-height: 1.5;
 }
 
+.whatsapp-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.whatsapp-button:disabled:hover {
+  background-color: #1f9d55;
+}
+
+.checkout-success {
+  display: grid;
+  gap: 14px;
+}
+
+.checkout-success-eyebrow {
+  margin: 0;
+  color: #3c7a4a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.checkout-success h3 {
+  margin: 0;
+  color: #2e5d37;
+  font-size: 1.45rem;
+}
+
+.checkout-success > p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.checkout-success-details {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.checkout-success-details > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ead9c8;
+}
+
+.checkout-success-details dt {
+  color: #6b554a;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.checkout-success-details dd {
+  margin: 0;
+  color: #35241d;
+  font-weight: 700;
+  text-align: right;
+}
+
+.checkout-success-id {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.checkout-success-details dd.checkout-success-total {
+  color: #a52c20;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
 @keyframes cart-backdrop-in {
   from {
     opacity: 0;

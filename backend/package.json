@@ -10,6 +10,7 @@
     "db:backup": "node scripts/backup-products.js",
     "db:seed": "node scripts/seed-catalog.js",
     "db:indexes": "node scripts/sync-indexes.js",
+    "db:order-indexes": "node scripts/sync-order-indexes.js",
     "db:restore": "node scripts/restore-products.js",
     "db:mark-legacy": "node scripts/mark-legacy-products.js",
     "test": "node --test"

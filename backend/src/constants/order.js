@@ -1,0 +1,31 @@
+const ORDER_MODALITIES = Object.freeze(['delivery', 'pickup']);
+
+const ORDER_STATUSES = Object.freeze(['pending', 'confirmed', 'cancelled']);
+
+const ORDER_CURRENCY = 'USD';
+
+const MAX_ORDER_ITEMS = 50;
+const MAX_ORDER_ITEM_QUANTITY = 99;
+const MAX_CUSTOMER_NAME_LENGTH = 80;
+const MAX_ADDRESS_LENGTH = 200;
+const MAX_REFERENCE_LENGTH = 200;
+const MAX_OBSERVATIONS_LENGTH = 500;
+
+const UUID_V4_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+
+module.exports = {
+  ORDER_MODALITIES,
+  ORDER_STATUSES,
+  ORDER_CURRENCY,
+  MAX_ORDER_ITEMS,
+  MAX_ORDER_ITEM_QUANTITY,
+  MAX_CUSTOMER_NAME_LENGTH,
+  MAX_ADDRESS_LENGTH,
+  MAX_REFERENCE_LENGTH,
+  MAX_OBSERVATIONS_LENGTH,
+  UUID_V4_PATTERN,
+  SHA256_PATTERN,
+};
