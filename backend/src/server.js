@@ -5,6 +5,15 @@ const cookieParser = require('cookie-parser');
 const env = require('./config/env');
 const { createSecurityConfig } = require('./config/security');
 const { createSecurityHeaders } = require('./middleware/securityHeaders');
+const { createCsrfProtection } = require('./middleware/csrf');
+const { createRateLimit } = require('./middleware/rateLimit');
+const { createRequireAuth } = require('./middleware/requireAuth');
+const {
+  authenticate,
+  resolveAuthenticatedAdmin,
+} = require('./services/adminAuthService');
+const { createAdminAuthController } = require('./controllers/adminAuthController');
+const { createAdminAuthRoutes } = require('./routes/adminAuthRoutes');
 const connectDB = require('./database');
 const productRoutes = require('./routes/productRoutes');
 const menuRoutes = require('./routes/menuRoutes');
@@ -13,6 +22,31 @@ const orderRoutes = require('./routes/orderRoutes');
 const security = createSecurityConfig({
   nodeEnv: env.NODE_ENV,
   jwtExpiresIn: env.JWT_EXPIRES_IN,
+});
+
+const csrf = createCsrfProtection({
+  cookieName: security.csrfCookie.name,
+  options: security.csrfCookie.options,
+});
+
+const loginLimiter = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyPrefix: 'admin-login',
+});
+
+const requireAuth = createRequireAuth({
+  cookieName: security.sessionCookie.name,
+  resolveAdmin: (token) =>
+    resolveAuthenticatedAdmin({ token, secret: env.JWT_SECRET }),
+});
+
+const adminAuthController = createAdminAuthController({
+  security,
+  secret: env.JWT_SECRET,
+  expiresIn: env.JWT_EXPIRES_IN,
+  authenticate,
+  csrf,
 });
 
 const app = express();
@@ -38,6 +72,17 @@ app.use('/api/menu', menuRoutes);
 
 // Registro de pedidos.
 app.use('/api/orders', orderRoutes);
+
+// Autenticación administrativa (rutas públicas + /me protegida).
+app.use(
+  '/api/admin/auth',
+  createAdminAuthRoutes({
+    controller: adminAuthController,
+    csrf,
+    requireAuth,
+    loginLimiter,
+  })
+);
 
 async function startServer() {
   await connectDB();

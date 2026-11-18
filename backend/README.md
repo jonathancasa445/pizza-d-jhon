@@ -327,9 +327,9 @@ posterior.
 
 ## Seguridad para Netlify + Render
 
-En la Etapa 0 de la Fase 5 ya quedó preparada la infraestructura de
-seguridad. Las rutas de autenticación y el panel se implementarán en etapas
-posteriores.
+La Etapa 0 preparó la infraestructura de seguridad y la Etapa 2 implementó
+la autenticación administrativa. El panel y las rutas de pedidos protegidas
+se implementarán en etapas posteriores.
 
 - CORS usa orígenes exactos desde `CLIENT_ORIGINS` con `credentials: true`.
 - Se monta `cookie-parser`, cabeceras de seguridad básicas y
@@ -340,13 +340,28 @@ posteriores.
 - Se previó la sustitución de `SameSite=None` por `SameSite=Lax` gracias al
   proxy de API de Netlify: el navegador ve un único origen, por lo que no
   dependemos de cookies de terceros (bloqueadas por Chrome/Safari).
-- CSRF de doble envío preparado en `middleware/csrf.js` (cookie legible +
-  cabecera `X-CSRF-Token`, comparación en tiempo constante). Se aplicará a
-  las rutas que muten estado en la Etapa 4.
-- Limitador de tasa en memoria preparado en `middleware/rateLimit.js` para
-  login y logout (5 intentos / 15 min). **Se asume una sola instancia de
+- CSRF de doble envío en `middleware/csrf.js` (cookie legible + cabecera
+  `X-CSRF-Token`, comparación en tiempo constante). Se aplica a `login` y
+  `logout`, y se aplicará a los cambios de estado en la Etapa 4.
+- Limitador de tasa en memoria en `middleware/rateLimit.js` para `login`
+  (5 intentos / 15 min por IP y usuario). **Se asume una sola instancia de
   Render**; con varias instancias haría falta un almacén compartido.
 - `JWT_SECRET` debe ser estable y definirse en Render; HTTPS obligatorio.
+
+### Endpoints de autenticación (Etapa 2)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/admin/auth/csrf` | Emite la cookie CSRF y devuelve el token en `{ csrfToken }`. |
+| POST | `/api/admin/auth/login` | Requiere CSRF; verifica credenciales, emite JWT en cookie HttpOnly y actualiza `lastLoginAt`. |
+| GET | `/api/admin/auth/me` | Requiere sesión válida; devuelve `{ admin: { id, username } }`. |
+| POST | `/api/admin/auth/logout` | Requiere CSRF; elimina la cookie de sesión y la de CSRF. |
+
+El JWT se envía **solo en la cookie** (`pizza_admin_session`), nunca en el
+cuerpo de las respuestas ni en `localStorage`. Las credenciales incorrectas,
+el usuario inexistente y el administrador inactivo devuelven el mismo error
+genérico `401 INVALID_CREDENTIALS`. Si `JWT_SECRET` está vacío, el login
+responde `500` y no emite tokens.
 
 ### Proxy de API en Netlify
 
